@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>마케팅제휴파트 데일리 대시보드</title>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root{
+  --bg:#f4f5f9;--sf:#ffffff;--sf2:#f0f2f7;--sf3:#e8eaf2;
+  --bd:rgba(0,0,0,.08);--bd2:rgba(0,0,0,.14);
+  --t1:#1a1d2e;--t2:#555a74;--t3:#9ba3bf;
+  --blue:#4C6EF5;--grn:#20B47A;--amb:#D97F0D;--purp:#8B47D9;
+  --ok:#20B47A;--warn:#D97F0D;--err:#D93535;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Pretendard',sans-serif;background:var(--bg);color:var(--t1);font-size:13px;min-height:100vh}
+
+/* HEADER */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:13px 28px;background:var(--sf);border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:300}
+.hdr-l{display:flex;align-items:center;gap:12px}
+.chip{background:rgba(124,143,248,.14);border:1px solid rgba(124,143,248,.3);border-radius:6px;padding:3px 9px;font-size:10px;font-weight:600;color:var(--blue);letter-spacing:.09em;text-transform:uppercase}
+.hdr h1{font-size:15px;font-weight:600}
+.hdr-r{display:flex;align-items:center;gap:8px}
+.btn{background:var(--sf2);border:1px solid var(--bd2);border-radius:7px;padding:5px 12px;font-size:12px;color:var(--t2);cursor:pointer;font-family:'Pretendard',sans-serif;transition:.15s}
+.btn:hover{border-color:var(--blue);color:var(--blue)}
+
+/* CTRL */
+.ctrl{display:flex;align-items:center;gap:10px;padding:10px 28px;background:var(--sf);border-bottom:1px solid var(--bd)}
+.ctrl-lbl{font-size:11px;color:var(--t3);white-space:nowrap}
+.date-disp{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;color:var(--t1);background:var(--sf2);border:1px solid var(--bd2);border-radius:7px;padding:5px 13px;min-width:160px;text-align:center}
+
+/* DROPDOWN */
+.dw{position:relative}
+.db{display:flex;align-items:center;gap:8px;background:var(--sf2);border:1px solid var(--bd2);border-radius:7px;padding:5px 13px;font-size:12px;color:var(--t1);cursor:pointer;user-select:none;min-width:175px;justify-content:space-between;transition:.15s}
+.db.open{border-color:var(--blue)}
+.dc{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.da{color:var(--t3);font-size:10px;transition:transform .15s}
+.db.open .da{transform:rotate(180deg)}
+.dm{position:absolute;top:calc(100% + 5px);left:0;min-width:220px;background:var(--sf2);border:1px solid var(--bd2);border-radius:10px;padding:6px;z-index:500;box-shadow:0 8px 24px rgba(0,0,0,.5);display:none;max-height:340px;overflow-y:auto}
+.dm.show{display:block}
+.dg{font-size:10px;font-weight:600;color:var(--t3);letter-spacing:.08em;text-transform:uppercase;padding:6px 8px 4px}
+.di{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;font-size:12px;color:var(--t2);cursor:pointer;transition:.12s}
+.di:hover{background:var(--sf3);color:var(--t1)}
+.di.sel{background:rgba(124,143,248,.12);color:var(--t1)}
+.ds{height:1px;background:var(--bd);margin:4px 0}
+
+/* MAIN */
+.main{padding:18px 28px;display:flex;flex-direction:column;gap:16px;max-width:1500px;margin:0 auto}
+.sec-lbl{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:10px}
+
+/* KPI ROW — 4 cards */
+.kpi3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.kpi{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:16px 18px;position:relative;overflow:hidden}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.kpi.ca::after{background:var(--blue)}
+.kpi.cp::after{background:var(--amb)}
+.kpi.cc::after{background:var(--grn)}
+
+/* KPI 내부 행 */
+.kpi-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.kpi-lbl{font-size:11px;color:var(--t3);font-weight:500}
+.kpi-icon{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px}
+
+.kpi-block{margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--bd)}
+.kpi-block:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none}
+.kpi-block-lbl{font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--t3);margin-bottom:5px}
+.kpi-main-val{font-size:22px;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:-.02em;line-height:1;color:var(--t1);margin-bottom:4px}
+.kpi-sub-row{display:flex;align-items:center;gap:7px}
+.chg{font-size:11px;font-weight:600;padding:2px 6px;border-radius:4px;font-family:'JetBrains Mono',monospace}
+.chg.up{background:rgba(61,214,140,.14);color:var(--ok)}
+.chg.dn{background:rgba(240,96,96,.14);color:var(--err)}
+.chg.neu{background:rgba(139,147,171,.12);color:var(--t2)}
+.kpi-prev{font-size:11px;color:var(--t3)}
+
+/* 전사 기여도 섹션 */
+.contrib-card{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:16px 18px}
+.contrib-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0}
+.contrib-col{padding:0 20px;border-right:1px solid var(--bd)}
+.contrib-col:first-child{padding-left:0}
+.contrib-col:last-child{border-right:none;padding-right:0}
+.contrib-col-lbl{font-size:10px;color:var(--t3);margin-bottom:10px;font-weight:500}
+
+.contrib-row{display:flex;align-items:baseline;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bd)}
+.contrib-row:last-child{border-bottom:none}
+.contrib-row-lbl{font-size:10px;color:var(--t3)}
+.contrib-row-val{font-size:12px;font-weight:600;font-family:'JetBrains Mono',monospace;color:var(--t2)}
+.contrib-row-val.em{color:var(--t1);font-size:13px}
+
+.contrib-rate-wrap{display:flex;align-items:center;gap:10px;margin-top:8px;padding-top:8px;border-top:1px solid var(--bd)}
+.contrib-rate-big{font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;line-height:1}
+.contrib-rate-detail{flex:1}
+.contrib-bar-wrap{height:3px;background:var(--sf3);border-radius:2px;overflow:hidden;margin-bottom:3px}
+.contrib-bar-fill{height:100%;border-radius:2px;transition:width .4s ease}
+.contrib-chg{font-size:10px;font-weight:600}
+.contrib-chg.up{color:var(--ok)}
+.contrib-chg.dn{color:var(--err)}
+.kpi{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:16px 18px;position:relative;overflow:hidden}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.kpi.ca::after{background:var(--blue)}
+.kpi.cp::after{background:var(--amb)}
+.kpi.cc::after{background:var(--grn)}
+.kpi.cr::after{background:var(--purp)}
+.kpi-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+.kpi-lbl{font-size:11px;color:var(--t3);font-weight:500}
+.kpi-icon{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px}
+.kpi-val{font-size:26px;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:-.03em;line-height:1;margin-bottom:7px}
+.kpi-foot{display:flex;align-items:center;gap:7px;margin-bottom:8px}
+.chg{font-size:11px;font-weight:600;padding:2px 6px;border-radius:4px;font-family:'JetBrains Mono',monospace}
+.chg.up{background:rgba(61,214,140,.14);color:var(--ok)}
+.chg.dn{background:rgba(240,96,96,.14);color:var(--err)}
+.chg.neu{background:rgba(139,147,171,.12);color:var(--t2)}
+.kpi-prev{font-size:11px;color:var(--t3)}
+
+/* KPI contribution rate bar */
+.kpi-contrib{margin-top:0}
+.kc-bar-wrap{height:4px;background:var(--sf3);border-radius:2px;overflow:hidden;margin-bottom:4px}
+.kc-bar-fill{height:100%;border-radius:2px;transition:width .4s ease}
+.kc-labels{display:flex;justify-content:space-between;align-items:center}
+.kc-rate{font-size:11px;font-weight:600;font-family:'JetBrains Mono',monospace}
+.kc-desc{font-size:10px;color:var(--t3)}
+
+/* monthly strip */
+.kpi-month{display:flex;align-items:center;gap:0;margin-top:8px;padding-top:8px;border-top:1px solid var(--bd)}
+.km{flex:1;text-align:center}
+.km-lbl{font-size:9px;color:var(--t3);margin-bottom:2px}
+.km-val{font-size:11px;font-weight:600;font-family:'JetBrains Mono',monospace;color:var(--t2)}
+.km-chg{font-size:9px;font-weight:600}
+.km-chg.up{color:var(--ok)}
+.km-chg.dn{color:var(--err)}
+.km-sep{width:1px;height:26px;background:var(--bd)}
+
+/* GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.card{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:16px 18px}
+.card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.card-ttl{font-size:13px;font-weight:600}
+.card-sub{font-size:11px;color:var(--t3)}
+.leg-row{display:flex;gap:10px;flex-wrap:wrap}
+.leg{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t2)}
+.leg-d{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:right;padding:5px 8px;color:var(--t3);font-weight:500;font-size:10px;border-bottom:1px solid var(--bd);white-space:nowrap}
+th:first-child{text-align:left}
+td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--bd);font-family:'JetBrains Mono',monospace;color:var(--t2)}
+td:first-child{text-align:left;font-family:'Pretendard',sans-serif;font-weight:500;color:var(--t1)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(0,0,0,.02)}
+.pc{display:inline-flex;align-items:center;gap:6px}
+.psq{width:7px;height:7px;border-radius:2px;flex-shrink:0}
+.bc{display:flex;align-items:center;gap:5px;justify-content:flex-end}
+.bar{width:36px;height:3px;background:var(--sf3);border-radius:2px;overflow:hidden}
+.bf{height:100%;border-radius:2px}
+
+/* MINI */
+.mini-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.mini{background:var(--sf2);border-radius:8px;padding:10px 12px}
+.mini-lbl{font-size:10px;color:var(--t3);margin-bottom:4px}
+.mini-val{font-size:16px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.mini-sub{font-size:10px;color:var(--t3);margin-top:2px}
+
+/* INSIGHT */
+.insight-section{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:16px 18px}
+.insight-hdr{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.insight-hdr h3{font-size:13px;font-weight:600}
+.ins-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;background:rgba(245,158,11,.15);color:var(--warn)}
+.ins-list{display:flex;flex-direction:column;gap:8px}
+.ins{display:flex;gap:10px;padding:10px 12px;border-radius:8px;background:var(--sf2)}
+.ins.spike{border-left:3px solid var(--warn)}
+.ins.drop{border-left:3px solid var(--err)}
+.ins.good{border-left:3px solid var(--ok)}
+.ins.info{border-left:3px solid var(--blue)}
+.ins-ico{font-size:15px;flex-shrink:0;line-height:1.5}
+.ins-body{flex:1}
+.ins-title{font-size:12px;font-weight:600;color:var(--t1);margin-bottom:3px}
+.ins-desc{font-size:11px;color:var(--t2);line-height:1.55}
+.ins-meta{font-size:10px;color:var(--t3);margin-top:3px;font-family:'JetBrains Mono',monospace}
+.ins-empty{font-size:12px;color:var(--t3);padding:6px 0}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-l">
+    <span class="chip">마케팅제휴파트</span>
+    <h1>데일리 실적 대시보드</h1>
+  </div>
+  <div class="hdr-r">
+    <button class="btn" onclick="moveDate(-1)">◀ 전날</button>
+    <div class="date-disp" id="dateDisp">—</div>
+    <button class="btn" onclick="moveDate(1)">다음날 ▶</button>
+  </div>
+</header>
+
+<div class="ctrl">
+  <span class="ctrl-lbl">제휴사</span>
+  <div class="dw" id="dw">
+    <div class="db" id="db" onclick="toggleDrop()">
+      <div style="display:flex;align-items:center;gap:7px">
+        <span class="dc" id="dclr" style="background:var(--blue)"></span>
+        <span id="dlbl">전체 실적</span>
+      </div>
+      <span class="da">▼</span>
+    </div>
+    <div class="dm" id="dm"></div>
+  </div>
+  <span style="font-size:11px;color:var(--t3)" id="grpTag"></span>
+</div>
+
+<main class="main">
+
+  <!-- 주요 지표 -->
+  <div>
+    <div class="sec-lbl">주요 지표 · <span id="secDate">—</span></div>
+    <div class="kpi3">
+
+      <!-- Adjust 유입 -->
+      <div class="kpi ca">
+        <div class="kpi-head">
+          <span class="kpi-lbl">Adjust 유입</span>
+          <div class="kpi-icon" style="background:rgba(124,143,248,.12)">📲</div>
+        </div>
+        <div class="kpi-block">
+          <div class="kpi-block-lbl">당일</div>
+          <div class="kpi-main-val" id="adj-day-aff">—</div>
+          <div class="kpi-sub-row">
+            <span class="chg" id="adj-day-chg">—</span>
+            <span class="kpi-prev" id="adj-day-prev">—</span>
+          </div>
+        </div>
+        <div class="kpi-block">
+          <div class="kpi-block-lbl">당월 누적</div>
+          <div class="kpi-main-val" id="adj-mon-aff">—</div>
+          <div class="kpi-sub-row">
+            <span class="chg" id="adj-mon-chg">—</span>
+            <span class="kpi-prev" id="adj-mon-prev">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 프로모션 주문수 -->
+      <div class="kpi cp">
+        <div class="kpi-head">
+          <span class="kpi-lbl">프로모션 주문수</span>
+          <div class="kpi-icon" style="background:rgba(245,166,35,.12)">🛒</div>
+        </div>
+        <div class="kpi-block">
+          <div class="kpi-block-lbl">당일</div>
+          <div class="kpi-main-val" id="prm-day-aff">—</div>
+          <div class="kpi-sub-row">
+            <span class="chg" id="prm-day-chg">—</span>
+            <span class="kpi-prev" id="prm-day-prev">—</span>
+          </div>
+        </div>
+        <div class="kpi-block">
+          <div class="kpi-block-lbl">당월 누적</div>
+          <div class="kpi-main-val" id="prm-mon-aff">—</div>
+          <div class="kpi-sub-row">
+            <span class="chg" id="prm-mon-chg">—</span>
+            <span class="kpi-prev" id="prm-mon-prev">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 배민클럽 획득 -->
+      <div class="kpi cc">
+        <div class="kpi-head">
+          <span class="kpi-lbl">배민클럽 획득</span>
+          <div class="kpi-icon" style="background:rgba(61,214,140,.12)">⭐</div>
+        </div>
+        <div class="kpi-block">
+          <div class="kpi-block-lbl">당일</div>
+          <div class="kpi-main-val" id="clb-day-aff">—</div>
+          <div id="clb-day-bd" style="font-size:10px;color:var(--t3);margin-bottom:3px"></div>
+          <div class="kpi-sub-row">
+            <span class="chg" id="clb-day-chg">—</span>
+            <span class="kpi-prev" id="clb-day-prev">—</span>
+          </div>
+        </div>
+        <div class="kpi-block">
+          <div class="kpi-block-lbl">당월 누적</div>
+          <div class="kpi-main-val" id="clb-mon-aff">—</div>
+          <div class="kpi-sub-row">
+            <span class="chg" id="clb-mon-chg">—</span>
+            <span class="kpi-prev" id="clb-mon-prev">—</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 전사 기여도 -->
+  <div>
+    <div class="sec-lbl">전사 기여도 · <span id="contribMonLbl" style="color:var(--t2)">—</span></div>
+    <div class="contrib-card">
+      <div class="contrib-grid">
+
+        <!-- Adjust 유입 -->
+        <div class="contrib-col">
+          <div class="contrib-col-lbl">Adjust 유입</div>
+          <div class="contrib-row">
+            <span class="contrib-row-lbl">전사 (당일)</span>
+            <span class="contrib-row-val" id="adj-day-tot">—</span>
+          </div>
+          <div class="contrib-row">
+            <span class="contrib-row-lbl">전사 (당월 누적)</span>
+            <span class="contrib-row-val" id="adj-mon-tot">—</span>
+          </div>
+          <div class="contrib-rate-wrap">
+            <div>
+              <div style="font-size:9px;color:var(--t3);margin-bottom:3px">당일 기여도</div>
+              <div class="contrib-rate-big" id="adj-day-rate" style="color:var(--blue)">—</div>
+            </div>
+            <div class="contrib-rate-detail">
+              <div class="contrib-bar-wrap"><div class="contrib-bar-fill" id="adj-day-bar" style="background:var(--blue);width:0%"></div></div>
+              <div style="font-size:9px;color:var(--t3);margin-bottom:4px" id="adj-day-chg2">—</div>
+              <div style="font-size:9px;color:var(--t3)">당월 기여도 <span style="color:var(--blue);font-weight:600" id="adj-mon-rate">—</span></div>
+              <div class="contrib-bar-wrap" style="margin-top:3px"><div class="contrib-bar-fill" id="adj-mon-bar" style="background:var(--blue);opacity:.5;width:0%"></div></div>
+              <div class="contrib-chg" id="adj-mon-chg2">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 프로모션 주문수 -->
+        <div class="contrib-col">
+          <div class="contrib-col-lbl">프로모션 주문수</div>
+          <div class="contrib-row">
+            <span class="contrib-row-lbl">전사 (당일)</span>
+            <span class="contrib-row-val" id="prm-day-tot">—</span>
+          </div>
+          <div class="contrib-row">
+            <span class="contrib-row-lbl">전사 (당월 누적)</span>
+            <span class="contrib-row-val" id="prm-mon-tot">—</span>
+          </div>
+          <div class="contrib-rate-wrap">
+            <div>
+              <div style="font-size:9px;color:var(--t3);margin-bottom:3px">당일 기여도</div>
+              <div class="contrib-rate-big" id="prm-day-rate" style="color:var(--amb)">—</div>
+            </div>
+            <div class="contrib-rate-detail">
+              <div class="contrib-bar-wrap"><div class="contrib-bar-fill" id="prm-day-bar" style="background:var(--amb);width:0%"></div></div>
+              <div style="font-size:9px;color:var(--t3);margin-bottom:4px" id="prm-day-chg2">—</div>
+              <div style="font-size:9px;color:var(--t3)">당월 기여도 <span style="color:var(--amb);font-weight:600" id="prm-mon-rate">—</span></div>
+              <div class="contrib-bar-wrap" style="margin-top:3px"><div class="contrib-bar-fill" id="prm-mon-bar" style="background:var(--amb);opacity:.5;width:0%"></div></div>
+              <div class="contrib-chg" id="prm-mon-chg2">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 배민클럽 획득 -->
+        <div class="contrib-col">
+          <div class="contrib-col-lbl">배민클럽 획득</div>
+          <div class="contrib-row">
+            <span class="contrib-row-lbl">전사 (당일)</span>
+            <span class="contrib-row-val" id="clb-day-tot">—</span>
+          </div>
+          <div class="contrib-row">
+            <span class="contrib-row-lbl">전사 (당월 누적)</span>
+            <span class="contrib-row-val" id="clb-mon-tot">—</span>
+          </div>
+          <div class="contrib-rate-wrap">
+            <div>
+              <div style="font-size:9px;color:var(--t3);margin-bottom:3px">당일 기여도</div>
+              <div class="contrib-rate-big" id="clb-day-rate" style="color:var(--grn)">—</div>
+            </div>
+            <div class="contrib-rate-detail">
+              <div class="contrib-bar-wrap"><div class="contrib-bar-fill" id="clb-day-bar" style="background:var(--grn);width:0%"></div></div>
+              <div style="font-size:9px;color:var(--t3);margin-bottom:4px" id="clb-day-chg2">—</div>
+              <div style="font-size:9px;color:var(--t3)">당월 기여도 <span style="color:var(--grn);font-weight:600" id="clb-mon-rate">—</span></div>
+              <div class="contrib-bar-wrap" style="margin-top:3px"><div class="contrib-bar-fill" id="clb-mon-bar" style="background:var(--grn);opacity:.5;width:0%"></div></div>
+              <div class="contrib-chg" id="clb-mon-chg2">—</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- 추세 차트 Row1: 전체 합산 -->
+  <div>
+    <div class="sec-lbl">제휴사 전체 실적 트렌드 · 최근 14일</div>
+    <div class="g3">
+      <div class="card">
+        <div class="card-hdr">
+          <span class="card-ttl">Adjust 유입</span>
+          <div class="leg-row" id="adjTotLeg"></div>
+        </div>
+        <div style="position:relative;height:185px"><canvas id="adjTotC"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-hdr">
+          <span class="card-ttl">프로모션 주문수</span>
+          <div class="leg-row" id="prmTotLeg"></div>
+        </div>
+        <div style="position:relative;height:185px"><canvas id="prmTotC"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-hdr">
+          <span class="card-ttl">배민클럽 획득</span>
+          <div class="leg-row" id="clbTotLeg"></div>
+        </div>
+        <div style="position:relative;height:185px"><canvas id="clbTotC"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 추세 차트 Row2: 상위 5개 제휴사 -->
+  <div>
+    <div class="sec-lbl">상위 5개 제휴사 실적 트렌드 · 최근 14일</div>
+    <div class="g3">
+      <div class="card">
+        <div class="card-hdr">
+          <span class="card-ttl">Adjust 유입</span>
+          <div class="leg-row" id="adjTop5Leg"></div>
+        </div>
+        <div style="position:relative;height:185px"><canvas id="adjTop5C"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-hdr">
+          <span class="card-ttl">프로모션 주문수</span>
+          <div class="leg-row" id="prmTop5Leg"></div>
+        </div>
+        <div style="position:relative;height:185px"><canvas id="prmTop5C"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-hdr">
+          <span class="card-ttl">배민클럽 획득</span>
+          <div class="leg-row" id="clbTop5Leg"></div>
+        </div>
+        <div style="position:relative;height:185px"><canvas id="clbTop5C"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 전체 트렌드 + 테이블 -->
+  <div class="g2">
+    <div class="card">
+      <div class="card-hdr">
+        <span class="card-ttl" id="trendTitle">3사 Adjust 유입 전체 트렌드</span>
+        <div class="leg-row" id="trendLeg"></div>
+      </div>
+      <div style="position:relative;height:180px"><canvas id="trendChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr">
+        <span class="card-ttl">전제휴사 요약</span>
+        <span class="card-sub" id="tblDate">—</span>
+      </div>
+      <table>
+        <thead><tr><th>제휴사</th><th>유입</th><th>프로모션</th><th>배민클럽</th></tr></thead>
+        <tbody id="tblBody"></tbody>
+      </table>
+      <div class="mini-row">
+        <div class="mini">
+          <div class="mini-lbl">간편결제 유입 비중</div>
+          <div class="mini-val" id="mShare" style="color:var(--amb)">—</div>
+          <div class="mini-sub">전체 Adjust 중</div>
+        </div>
+        <div class="mini">
+          <div class="mini-lbl">제휴 클럽 신규 기여</div>
+          <div class="mini-val" id="mNewContrib" style="color:var(--purp)">—</div>
+          <div class="mini-sub">전사 신규 대비</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INSIGHTS -->
+  <div class="insight-section">
+    <div class="insight-hdr">
+      <h3>전일 대비 인사이트</h3>
+      <span class="ins-badge" id="insBadge">분석 중</span>
+    </div>
+    <div id="insArea"><div style="display:flex;align-items:center;gap:8px;color:var(--t3);font-size:12px;padding:6px 0"><div style="width:14px;height:14px;border:2px solid var(--bd2);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite"></div>분석 중...</div></div>
+  </div>
+</main>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
+<script>
+// ═══════════ DATA ═══════════
+const DATES=["2026-05-01","2026-05-02","2026-05-03","2026-05-04","2026-05-05","2026-05-06","2026-05-07","2026-05-08","2026-05-09","2026-05-10","2026-05-11","2026-05-12","2026-05-13","2026-05-14","2026-05-15","2026-05-16","2026-05-17","2026-05-18","2026-05-19","2026-05-20","2026-05-21","2026-05-22","2026-05-23","2026-05-24","2026-05-25","2026-05-26","2026-05-27","2026-05-28","2026-05-29","2026-05-30","2026-05-31","2026-06-01","2026-06-02","2026-06-03","2026-06-04","2026-06-05","2026-06-06","2026-06-07","2026-06-08","2026-06-09","2026-06-10"];
+const DAYS=["금","토","일","월","화","수","목","금","토","일","월","화","수","목","금","토","일","월","화","수","목","금","토","일","월","화","수","목","금","토","일","월","화","수","목","금","토","일","월","화","수"];
+
+// 전사 totals
+const TOT={
+  adj:[5960522,5873453,6357486,5573988,6035966,5183548,5300442,5772948,6043879,6237930,5339788,5064986,5365510,5629794,5961868,6202658,6445924,5572087,5693933,6212792,6038843,6069279,6438436,6373524,6609143,5708381,5723943,5747567,6275093,6468138,6456988,5080558,5365278,6329167,5534744,5738137,6380969,6519994,5365684,5391298,0],
+  prm:[3069978,2946041,3150777,2640379,3113267,2213811,2323427,2746603,3013806,3117183,2269023,2237583,2282738,2309500,2697979,3134574,3156912,2191895,2244407,2618427,2428061,2711934,3060196,3153656,3143757,2331714,2341785,2347321,2655065,3192571,3255128,2306233,2595604,3185372,2325719,2588696,3144264,3186808,2236195,2267154,2403248],
+  clb:[35087,31338,33802,26586,32748,21406,22275,26728,30840,30482,22423,24690,38233,52711,65279,66634,68129,54755,88839,157438,173946,203789,170226,158701,146361,74588,73083,91151,101309,127187,121588,69008,74776,102163,62757,75431,101531,98160,56207,54973,59177],
+  clbN:[13063,12035,13080,9642,12338,7302,7636,9433,11289,11415,7722,8776,15373,24596,27517,29292,29962,22006,28190,50574,68752,85227,78308,72911,67497,32799,25044,40835,46080,58606,58278,30790,34427,49033,27776,34406,49001,48690,25859,25794,27826],
+  clbR:[22024,19303,20722,16944,20410,14104,14639,17295,19551,19067,14701,15914,22860,28115,37762,37342,38167,32749,60649,106864,105194,118562,91918,85790,78864,41789,48039,50316,55229,68581,63310,38218,40349,53130,34981,41025,52530,49470,30348,29179,31351],
+  // 전사 대비 제휴 누계
+  adjP:[43289,17625,17208,21431,12833,40206,18988,14844,12798,15523,20046,23578,26616,74454,120101,68315,66448,215811,199735,187443,173524,72979,79797,68093,100498,176870,194738,175478,658665,162391,156738,9132,7054,8897,19099,5862,0,9228,3860,3883,16561],
+  prmP:[4307,4077,4056,4264,4541,5244,6199,4101,3836,3522,8888,9458,8412,4578,5709,5222,4866,3079,5361,6353,13634,14655,14637,8623,10788,9135,6207,5087,6170,4907,4679,288,337,338,190,237,241,227,119,157,288],
+  clbP:[2742,2685,2675,2269,2315,2136,2188,2580,2881,2735,3173,2499,4120,2836,5668,4137,3570,3459,7089,8879,6691,5900,3460,2365,3042,2041,1847,2043,1970,2357,2460,1100,1166,1907,2589,881,1700,1532,1172,1070,2904],
+  clbNP:[854,854,854,663,723,666,667,861,941,922,1115,880,1412,920,2006,1375,1104,1062,1886,2846,2507,2276,1427,947,1189,773,722,827,791,1008,1111,431,468,759,1019,383,702,697,504,477,1274],
+  contrib:['7.8','8.6','7.9','8.5','7.1','10.0','9.8','9.7','9.3','9.0','14.2','10.1','10.8','5.4','8.7','6.2','5.2','6.3','8.0','5.6','3.8','2.9','2.0','1.5','2.1','2.7','2.5','2.2','1.9','1.9','2.0','1.6','1.6','1.9','4.1','1.2','1.7','1.6','2.1','1.9','4.9'],
+  mAdj:{may:183738837,jun:51705829}, mPrm:{may:84099498,jun:26239293}, mClb:{may:2372352,jun:485666},
+  mAdjP:{may:3237063,jun:50044}, mPrmP:{may:204595,jun:1631},  mClbP:{may:104812,jun:9343},
+  mContrib:{may:'4.4%',jun:'1.9%'},
+};
+
+const PARTNERS={
+  '카카오페이':{group:'간편결제사',color:'#FEE500',adj:[2867,887,1005,459,1878,30578,11257,2494,992,797,8275,6209,6434,28029,17043,5168,3315,157510,98547,101554,98824,3620,1314,1080,27203,113241,130536,111365,107876,110631,91947,267,309,317,227,764,0,406,300,98,114],prm:[2,0,0,33,117,2844,3814,0,0,0,6455,6678,5609,2010,2676,1733,1518,1346,2286,2869,9366,8199,10821,4771,7223,6970,4209,2997,3762,1825,1549,0,6,5,3,6,2,1,6,5,4],clb:[0,0,0,8,29,321,140,2,2,0,39,31,27,361,1204,188,115,408,454,823,495,8,0,2,147,194,65,45,48,42,43,0,0,0,0,0,0,0,0,0,0],mAdj:{may:183738837,jun:51705829},mPrm:{may:84099498,jun:26239293},mClb:{may:5241,jun:0}},
+  '토스페이':{group:'간편결제사',color:'#3182F6',adj:[2692,6732,6309,2293,2655,1906,1681,1760,6302,5710,1626,1580,12115,41202,98789,58209,58682,54115,92704,74709,67838,63844,73954,62902,68633,60765,61472,61388,547966,48878,61915,2509,2267,4014,17013,3300,0,7246,2086,2186,14382],prm:[0,0,0,0,0,0,0,0,0,0,0,0,0,13,199,297,277,149,550,710,644,923,389,472,565,370,338,355,508,719,694,0,0,0,0,0,0,0,0,0,0],clb:[0,0,0,0,0,0,0,0,0,0,0,0,0,16,1838,348,132,77,2160,553,217,184,661,159,586,124,74,61,112,95,85,0,0,0,0,0,0,0,0,0,0],mAdj:{may:183738837,jun:51705829},mPrm:{may:84099498,jun:26239293},mClb:{may:7482,jun:0}},
+  '네이버페이':{group:'간편결제사',color:'#03C75A',adj:[37730,10006,9894,18679,8300,7722,6050,10590,5504,9016,10145,15789,8067,5223,4269,4938,4451,4186,8484,11180,6862,5515,4529,4111,4662,2864,2730,2725,2823,2882,2876,6356,4478,4566,1859,1798,0,1576,1474,1599,2065],prm:[4305,4077,4056,4231,4424,2400,2385,4101,3836,3522,2433,2780,2803,2555,2834,3192,3071,1584,2525,2774,3624,5533,3427,3380,3000,1795,1660,1735,1900,2363,2436,288,331,333,187,231,239,226,113,152,284],clb:[552,337,289,443,289,224,188,368,248,323,251,377,245,320,343,557,559,341,701,1402,1073,820,198,167,144,101,76,50,91,91,89,27,36,38,16,36,28,18,30,27,100],mAdj:{may:183738837,jun:51705829},mPrm:{may:84099498,jun:26239293},mClb:{may:11257,jun:181}},
+  '신한카드':{group:'카드사',color:'#60a5fa',adj:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,4,9308,833,1532,606,232,200,160,137,5684,1182,803,348,127,103,93,64,53,0,48,33,33,33],prm:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,533,441,471,448,373,342,213,185,532,634,760,750,0,0,0,0,0,0,0,0,0,0],clb:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1509,194,134,68,52,54,37,27,325,62,68,78,0,0,0,0,0,0,0,0,0,0],mAdj:{may:183738837,jun:51705829},mPrm:{may:84099498,jun:26239293},mClb:{may:2608,jun:0}},
+  '삼성카드':{group:'카드사',color:'#818cf8',adj:[932,359,357,303,446,217,311,347,321,365,196,246,220,210,240,308,261,180,199,555,228,290,264,287,236,164,152,151,165,230,232,1721,509,489,252,263,0,170,144,194,151],prm:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,102,152,223,121,157,198,161,77,89,104],clb:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,129,40,54,30,27,23,23,21,25,22],mAdj:{may:183738837,jun:51705829},mPrm:{may:84099498,jun:26239293},mClb:{may:0,jun:303}},
+  'KB국민카드':{group:'카드사',color:'#a78bfa',adj:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,82,8017,4896,1907,810,635,702,631,650,592,552,581,70,93,155,94,147,0,72,75,119,124],prm:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,205,511,541,495,408,240,269,269,319,402,420,0,1,9,7,9,16,18,12,12,23],clb:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,20,553,171,113,85,91,77,107,127,113,115,157,0,4,14,12,16,8,3,10,7,8],mAdj:{may:183738837,jun:51705829},mPrm:{may:84099498,jun:26239293},mClb:{may:1729,jun:54}},
+  '우리카드':{group:'카드사',color:'#c084fc',adj:[0,0,0,0,0,1,1,701,1295,1230,5921,2229,1055,2300,2540,775,667,1034,2257,926,617,3871,1017,564,773,886,2669,758,581,513,521,483,1398,7692,4546,2807,0,1800,1606,805,799],prm:[0,0,0,0,0,0,0,279,495,479,470,559,481,615,822,901,834,402,547,475,480,950,895,900,825,501,642,564,680,896,970,150,301,786,558,798,894,781,450,484,473],clb:[0,0,0,0,0,0,0,120,100,69,434,185,114,222,321,143,120,79,201,89,65,244,101,65,50,45,99,37,35,36,46,0,0,0,0,0,0,0,0,0,0],mAdj:{may:183738837,jun:51705829},mPrm:{may:84099498,jun:26239293},mClb:{may:3020,jun:0}},
+  '비씨카드':{group:'카드사',color:'#e879f9',adj:[0,0,0,0,0,0,1,12087,4658,2555,1803,1607,1618,1254,1188,1370,1161,872,1136,1046,899,1200,1081,924,938,1416,755,747,692,871,792,5768,1643,4484,1205,1092,0,1016,719,680,728],prm:[0,0,0,0,0,0,0,1055,1327,1278,799,807,859,899,1164,1357,1252,558,711,645,650,1146,1307,1245,1064,647,780,781,895,1207,1302,690,864,1260,767,1082,1289,1124,661,670,670],clb:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],mAdj:{may:183738837,jun:51705829},mPrm:{may:84099498,jun:26239293},mClb:{may:0,jun:0}},
+  '하나카드':{group:'카드사',color:'#f472b6',adj:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,187,2746,1312,707,1447,814,622,1284,514,377,316,334,369,228,175,156,181,7,11,5,5,5,0,2,5,4,6],prm:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,85,137,56,97,113,107,189,212,202,161,106,116,105,123,158,166,0,0,0,0,0,0,0,0,0,0],clb:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,20,196,137,113,301,179,150,275,127,91,61,64,72,54,41,46,53,0,0,0,0,0,0,0,0,0,0],mAdj:{may:183738837,jun:51705829},mPrm:{may:84099498,jun:26239293},mClb:{may:1980,jun:0}},
+  '나라사랑카드':{group:'카드사',color:'#fb923c',adj:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],prm:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],clb:[284,226,209,223,226,188,206,235,287,198,169,221,190,265,251,264,210,223,258,288,271,241,268,170,161,134,148,168,162,169,145,113,144,226,123,155,178,136,107,128,148],mAdj:{may:183738837,jun:51705829},mPrm:{may:84099498,jun:26239293},mClb:{may:6658,jun:939}},
+  'KT':{group:'통신사',color:'#ef4444',adj:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],prm:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10944,13173,14090,13712,18556,18689,18648,15752,10319,12465,13319,19326,26350,29075,0,0,0,0,0,0,0,0,0,0],clb:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],mAdj:{may:183738837,jun:51705829},mPrm:{may:84099498,jun:26239293},mClb:{may:0,jun:0}},
+  'LGU+':{group:'통신사',color:'#f97316',adj:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],prm:[0,0,0,0,0,0,0,0,0,0,0,0,0,883,483,714,549,295,255,269,288,250,498,385,490,216,261,324,330,628,753,0,0,0,0,0,0,0,0,0,0],clb:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],mAdj:{may:183738837,jun:51705829},mPrm:{may:84099498,jun:26239293},mClb:{may:0,jun:0}},
+  '케이뱅크':{group:'은행',color:'#22d3ee',adj:[0,0,0,0,0,1565,824,3854,771,669,1902,653,3611,643,3509,1463,661,4071,3707,3060,1897,5254,1253,676,635,1338,631,9132,1084,530,503,7436,8582,2115,2583,10991,0,4249,3565,1716,4343],prm:[266,271,266,205,293,243,359,712,698,597,476,459,613,594,866,992,806,670,1049,1191,1230,1837,1796,1561,1242,875,752,1205,1325,1489,1408,0,0,0,0,0,0,1212,825,660,718],clb:[143,102,89,91,84,75,70,210,81,65,54,55,130,72,48,223,116,427,441,418,307,741,92,59,54,42,38,51,50,46,53,126,224,105,108,346,141,176,166,109,282],mAdj:{may:183738837,jun:51705829},mPrm:{may:84099498,jun:26239293},mClb:{may:4527,jun:1050}},
+  '멜론':{group:'브랜드사',color:'#4ade80',adj:[0,0,0,7,10,130,631,612,312,257,2999,450,550,286,314,273,306,644,558,618,316,1836,405,294,1509,585,267,288,485,289,311,1394,1321,5331,1816,937,0,652,1106,785,4589],prm:[0,0,0,1,6,10,115,200,229,238,278,519,498,402,483,511,477,301,393,451,397,709,783,705,620,592,471,474,483,644,596,0,0,0,0,0,0,487,339,315,407],clb:[0,0,0,6,7,55,292,300,236,198,984,344,349,260,302,304,339,402,411,438,278,724,338,244,604,353,233,226,298,319,350,249,235,684,406,262,245,221,235,240,634],mAdj:{may:183738837,jun:51705829},mPrm:{may:84099498,jun:26239293},mClb:{may:9194,jun:2081}},
+  '토스증권':{group:'브랜드사',color:'#a3e635',adj:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,0,0,0,296,294,223,200,196,0,125,246,230,216],prm:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],clb:[194,165,184,249,227,285,328,312,274,258,389,423,406,402,359,276,219,348,268,248,298,306,126,183,178,262,299,276,305,210,248,0,0,0,0,0,0,0,0,0,0],mAdj:{may:183738837,jun:51705829},mPrm:{may:84099498,jun:26239293},mClb:{may:8505,jun:0}},
+  '롯데백화점':{group:'브랜드사',color:'#facc15',adj:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,190,204,142,659],prm:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],clb:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,23,26,16,124],mAdj:{may:183738837,jun:51705829},mPrm:{may:84099498,jun:26239293},mClb:{may:738,jun:165}},
+};
+
+
+
+// 일별 전사/제휴 배열 (전사 기여도 계산용)
+const ADJ_TOT=[5960522,5873453,6357486,5573988,6035966,5183548,5300442,5772948,6043879,6237930,5339788,5064986,5365510,5629794,5961868,6202658,6445924,5572087,5693933,6212792,6038843,6069279,6438436,6373524,6609143,5708381,5723943,5747567,6275093,6468138,6456988,5080558,5365278,6329167,5534744,5738137,6380969,6519994,5365684,5391298,0];
+const PRM_TOT=[3069978,2946041,3150777,2640379,3113267,2213811,2323427,2746603,3013806,3117183,2269023,2237583,2282738,2309500,2697979,3134574,3156912,2191895,2244407,2618427,2428061,2711934,3060196,3153656,3143757,2331714,2341785,2347321,2655065,3192571,3255128,2306233,2595604,3185372,2325719,2588696,3144264,3186808,2236195,2267154,2403248];
+const CLB_TOT=[35087,31338,33802,26586,32748,21406,22275,26728,30840,30482,22423,24690,38233,52711,65279,66634,68129,54755,88839,157438,173946,203789,170226,158701,146361,74588,73083,91151,101309,127187,121588,69008,74776,102163,62757,75431,101531,98160,56207,54973,59177];
+const ADJ_AFF=[43289,17625,17208,21431,12833,40206,18988,14844,12798,15523,20046,23578,26616,74454,120101,68315,66448,215811,199735,187443,173524,72979,79797,68093,100498,176870,194738,175478,658665,162391,156738,9132,7054,8897,19099,5862,0,9228,3860,3883,16561];
+const PRM_AFF=[4307,4077,4056,4264,4541,5244,6199,4101,3836,3522,8888,9458,8412,4578,5709,5222,4866,3079,5361,6353,13634,14655,14637,8623,10788,9135,6207,5087,6170,4907,4679,288,337,338,190,237,241,227,119,157,288];
+const CLB_AFF=[2742,2685,2675,2269,2315,2136,2188,2580,2881,2735,3173,2499,4120,2836,5668,4137,3570,3459,7089,8879,6691,5900,3460,2365,3042,2041,1847,2043,1970,2357,2460,1100,1166,1907,2589,881,1700,1532,1172,1070,2904];
+const CUM_ADJ_TOT=[5960522,11833975,18191461,23765449,29801415,34984963,40285405,46058353,52102232,58340162,63679950,68744936,74110446,79740240,85702108,91904766,98350690,103922777,109616710,115829502,121868345,127937624,134376060,140749584,147358727,153067108,158791051,164538618,170813711,177281849,183738837,5080558,10445836,16775003,22309747,28047884,34428853,40948847,46314531,51705829,51705829];
+const CUM_ADJ_AFF=[43289,60914,78122,99553,112386,152592,171580,186424,199222,214745,234791,258369,284985,359439,479540,547855,614303,830114,1029849,1217292,1390816,1463795,1543592,1611685,1712183,1889053,2083791,2259269,2917934,3080325,3237063,9132,16186,25083,44182,50044,50044,59272,63132,67015,83576];
+const CUM_PRM_TOT=[3069978,6016019,9166796,11807175,14920442,17134253,19457680,22204283,25218089,28335272,30604295,32841878,35124616,37434116,40132095,43266669,46423581,48615476,50859883,53478310,55906371,58618305,61678501,64832157,67975914,70307628,72649413,74996734,77651799,80844370,84099498,2306233,4901837,8087209,10412928,13001624,16145888,19332696,21568891,23836045,26239293];
+const CUM_PRM_AFF=[4307,8384,12440,16704,21245,26489,32688,36789,40625,44147,53035,62493,70905,75483,81192,86414,91280,94359,99720,106073,119707,134362,148999,157622,168410,177545,183752,188839,195009,199916,204595,288,625,963,1153,1390,1631,1858,1977,2134,2422];
+const CUM_CLB_TOT=[35087,66425,100227,126813,159561,180967,203242,229970,260810,291292,313715,338405,376638,429349,494628,561262,629391,684146,772985,930423,1104369,1308158,1478384,1637085,1783446,1858034,1931117,2022268,2123577,2250764,2372352,69008,143784,245947,308704,384135,485666,583826,640033,695006,754183];
+const CUM_CLB_AFF=[2742,5427,8102,10371,12686,14822,17010,19590,22471,25206,28379,30878,34998,37834,43502,47639,51209,54668,61757,70636,77327,83227,86687,89052,92094,94135,95982,98025,99995,102352,104812,1100,2266,4173,6762,7643,9343,10875,12047,13117,16021];
+const MAY_ADJ_AFF=3237063,MAY_ADJ_TOT=183738837;
+const MAY_PRM_AFF=204595,MAY_PRM_TOT=84099498;
+const MAY_CLB_AFF=104812,MAY_CLB_TOT=2372352;
+
+const GROUP_ORDER=['간편결제사','카드사','통신사','은행','브랜드사'];
+
+// ═══════════ DERIVED: 제휴 전체 합산 (row24, row176) ═══════════
+const ADJ_ALL = DATES.map((_,i)=>Object.values(PARTNERS).reduce((s,p)=>s+p.adj[i],0));
+const PRM_ALL = DATES.map((_,i)=>Object.values(PARTNERS).reduce((s,p)=>s+p.prm[i],0));
+function _cum(arr){ let r=[],run=0,m=null; arr.forEach((v,i)=>{const mo=DATES[i].slice(0,7);if(mo!==m){run=0;m=mo;}run+=v;r.push(run);}); return r; }
+const CUM_ADJ_ALL=_cum(ADJ_ALL), CUM_PRM_ALL=_cum(PRM_ALL);
+const MAY_ADJ_ALL=CUM_ADJ_ALL[30], MAY_PRM_ALL=CUM_PRM_ALL[30];
+// 실적(D) row24 직접 읽은 값 (ADJ 전 제휴 합산)
+const ADJ_AFF_TOT=[44221,17984,17565,21741,13289,42119,20756,32445,20155,20599,32867,28763,33670,79147,128080,75250,70816,223320,209043,203853,187713,93565,87397,72921,107220,183109,200766,193467,664037,166695,161129,26813,21279,29808,30143,22586,16708,17552,11563,8591,28209];
+const CUM_ADJ_AFF_TOT=[44221,62205,79770,101511,114800,156919,177675,210120,230275,250874,283741,312504,346174,425321,553401,628651,699467,922787,1131830,1335683,1523396,1616961,1704358,1777279,1884499,2067608,2268374,2461841,3125878,3292573,3453702,26813,48092,77900,108043,130629,147337,164889,176452,185043,213252];
+const MAY_ADJ_AFF_TOT=3453702;
+// 실적(D) row176 직접 읽은 값
+const PRM_AFF_TOT=[4573,4348,4322,4470,4840,5497,6673,6347,6585,6114,10911,11802,10863,7971,9528,9782,8921,16305,21586,24120,31174,39341,39895,33237,31863,22952,22270,22788,30432,37641,40301,1889,3084,4324,2972,4339,4751,4109,2556,2445,2738];
+const CUM_PRM_AFF_TOT=[4573,8921,13243,17713,22553,28050,34723,41070,47655,53769,64680,76482,87345,95316,104844,114626,123547,139852,161438,185558,216732,256073,295968,329205,361068,384020,406290,429078,459510,497151,537452,1889,4973,9297,12269,16608,21359,25468,28024,30469,33207];
+const MAY_PRM_AFF_TOT=537452;
+
+// ═══════════ STATE ═══════════
+let selIdx = DATES.length - 2; // 6/6
+let selKey = '__all__';
+
+// ═══════════ HELPERS ═══════════
+const fmt = n => n.toLocaleString();
+const fmtK = n => n >= 100000 ? (n/10000).toFixed(1)+'만' : fmt(n);
+function pct(c,p){ if(!p) return null; return ((c-p)/p*100).toFixed(1); }
+function contribPct(part, total){ return total ? Math.round(part/total*100) : 0; }
+
+function setBadge(cur, prev, cid, pid){
+  const cel=document.getElementById(cid), pel=document.getElementById(pid);
+  const p=pct(cur,prev);
+  if(p===null){cel.textContent='—';cel.className='chg neu';}
+  else{const up=parseFloat(p)>=0;cel.textContent=(up?'▲ +':'▼ ')+p+'%';cel.className='chg '+(up?'up':'dn');}
+  pel.textContent='전일 '+fmt(prev);
+}
+
+function setContrib(partVal, totVal, barId, rateId, color){
+  const r = contribPct(partVal, totVal);
+  document.getElementById(barId).style.width = Math.min(r, 100)+'%';
+  document.getElementById(barId).style.background = color;
+  document.getElementById(rateId).textContent = r+'%';
+}
+
+// ═══════════ MONTHLY STRIP ═══════════
+function monthStrip(kmId, mSrc, metric){
+  const sel = DATES[selIdx];
+  const isMay = sel.startsWith('2026-05');
+  const key = metric.charAt(0).toUpperCase()+metric.slice(1);
+  const cur = mSrc['m'+key][isMay?'may':'jun'];
+  const prv = isMay ? null : mSrc['m'+key]['may'];
+  let html=`<div class="km"><div class="km-lbl">이번달 누계</div><div class="km-val">${fmtK(cur)}</div>`;
+  if(prv!==null){const p=pct(cur,prv);if(p!==null)html+=`<div class="km-chg ${parseFloat(p)>=0?'up':'dn'}">${parseFloat(p)>=0?'▲':'▼'} ${Math.abs(parseFloat(p)).toFixed(1)}%</div>`;}
+  html+='</div>';
+  if(prv!==null) html+=`<div class="km-sep"></div><div class="km"><div class="km-lbl">전월</div><div class="km-val" style="color:var(--t3)">${fmtK(prv)}</div></div>`;
+  document.getElementById(kmId).innerHTML=html;
+}
+
+// ═══════════ DROPDOWN ═══════════
+function buildDropdown(){
+  const menu=document.getElementById('dm');
+  menu.innerHTML=`<div class="di sel" data-key="__all__" onclick="selectPartner('__all__',this)"><span class="dc" style="background:var(--blue)"></span>전체 실적</div><div class="ds"></div>`;
+  GROUP_ORDER.forEach(g=>{
+    const ms=Object.entries(PARTNERS).filter(([,v])=>v.group===g);
+    if(!ms.length) return;
+    menu.innerHTML+=`<div class="dg">${g}</div>`;
+    ms.forEach(([n,p])=>menu.innerHTML+=`<div class="di" data-key="${n}" onclick="selectPartner('${n}',this)"><span class="dc" style="background:${p.color}"></span>${n}</div>`);
+    menu.innerHTML+='<div class="ds"></div>';
+  });
+}
+function toggleDrop(){document.getElementById('db').classList.toggle('open');document.getElementById('dm').classList.toggle('show');}
+function selectPartner(key,el){
+  selKey=key;
+  document.querySelectorAll('.di').forEach(e=>e.classList.remove('sel'));
+  el.classList.add('sel');
+  const color=key==='__all__'?'var(--blue)':PARTNERS[key].color;
+  document.getElementById('dclr').style.background=color;
+  document.getElementById('dlbl').textContent=key==='__all__'?'전체 실적':key;
+  document.getElementById('grpTag').textContent=key!=='__all__'?'· '+PARTNERS[key].group:'';
+  document.getElementById('db').classList.remove('open');
+  document.getElementById('dm').classList.remove('show');
+  render();
+}
+document.addEventListener('click',e=>{if(!document.getElementById('dw').contains(e.target)){document.getElementById('db').classList.remove('open');document.getElementById('dm').classList.remove('show');}});
+
+// ═══════════ DATE NAV ═══════════
+function moveDate(d){
+  const n=selIdx+d;
+  if(n<0||n>=DATES.length) return;
+  if(d>0&&TOT.adj[n]===0&&TOT.prm[n]===0) return;
+  selIdx=n; render();
+}
+
+// ═══════════ CHARTS ═══════════
+let adjTotChart, prmTotChart, clbTotChart, trendChart;
+let adjTop5Chart, prmTop5Chart, clbTop5Chart;
+const GC='rgba(0,0,0,.06)', TC='#9ba3bf';
+const TTO={backgroundColor:'#1a1d2e',borderColor:'rgba(0,0,0,.15)',borderWidth:1,titleColor:'#9ba3bf',bodyColor:'#f0f2f7'};
+
+const makeLine = (canvasId) => new Chart(document.getElementById(canvasId), {
+  type:'line', data:{labels:[],datasets:[]},
+  options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+    plugins:{legend:{display:false},tooltip:{...TTO,callbacks:{label:c=>' '+c.dataset.label+': '+c.parsed.y.toLocaleString()}}},
+    scales:{x:{ticks:{color:TC,font:{size:10},maxTicksLimit:10},grid:{color:GC}},
+            y:{ticks:{color:TC,font:{size:10},callback:v=>v>=10000?(v/10000).toFixed(0)+'만':v.toLocaleString()},grid:{color:GC}}}}
+});
+
+function makeBar(canvasId){
+  return new Chart(document.getElementById(canvasId), {
+    type:'bar', data:{labels:[],datasets:[]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{...TTO,callbacks:{label:c=>' '+c.dataset.label+': '+c.parsed.y.toLocaleString()}}},
+      scales:{x:{stacked:true,ticks:{color:TC,font:{size:10},maxTicksLimit:10},grid:{display:false}},
+              y:{stacked:false,ticks:{color:TC,font:{size:10},callback:v=>v>=10000?(v/10000).toFixed(0)+'만':v.toLocaleString()},grid:{color:GC}}}}
+  });
+}
+function initCharts(){
+  adjTotChart  = makeLine('adjTotC');
+  prmTotChart  = makeLine('prmTotC');
+  clbTotChart  = makeBar('clbTotC');
+  adjTop5Chart = makeLine('adjTop5C');
+  prmTop5Chart = makeLine('prmTop5C');
+  clbTop5Chart = makeLine('clbTop5C');
+  trendChart   = makeLine('trendChart');
+}
+
+function upd(chart, labels, datasets){ chart.data.labels=labels; chart.data.datasets=datasets; chart.update('none'); }
+
+function updClbTot(labels, datasets){
+  clbTotChart.destroy();
+  clbTotChart = new Chart(document.getElementById('clbTotC'), {
+    type:'bar', data:{labels, datasets},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{...TTO,callbacks:{label:c=>' '+c.dataset.label+': '+c.parsed.y.toLocaleString()}}},
+      scales:{x:{stacked:true,ticks:{color:TC,font:{size:10},maxTicksLimit:10},grid:{display:false}},
+              y:{stacked:false,ticks:{color:TC,font:{size:10},callback:v=>v>=10000?(v/10000).toFixed(0)+'만':v.toLocaleString()},grid:{color:GC}}}}
+  });
+}
+
+function setLeg(id, items){ document.getElementById(id).innerHTML=items.map(([n,c])=>`<div class="leg"><span class="leg-d" style="background:${c}"></span>${n}</div>`).join(''); }
+
+// ═══════════ INSIGHTS ═══════════
+function genInsights(i, isAll, key){
+  if(i===0) return [{type:'info',icon:'ℹ️',title:'전일 데이터 없음',desc:'비교할 전일 데이터가 없습니다.',meta:''}];
+  const prev=i-1, list=[];
+
+  // Overall anomaly scan
+  const checks=[
+    {name:'카카오페이',m:'adj',lbl:'카카오페이 Adjust 유입'},
+    {name:'토스페이',m:'adj',lbl:'토스페이 Adjust 유입'},
+    {name:'네이버페이',m:'adj',lbl:'네이버페이 Adjust 유입'},
+    {name:'카카오페이',m:'prm',lbl:'카카오페이 프로모션 주문'},
+    {name:'네이버페이',m:'prm',lbl:'네이버페이 프로모션 주문'},
+    {name:'토스페이',m:'prm',lbl:'토스페이 프로모션 주문'},
+    {name:'케이뱅크',m:'adj',lbl:'케이뱅크 유입'},
+    {name:'비씨카드',m:'prm',lbl:'비씨카드 프로모션 주문'},
+    {name:'우리카드',m:'prm',lbl:'우리카드 프로모션 주문'},
+    {name:'KT',m:'prm',lbl:'KT 프로모션 주문'},
+    {name:'멜론',m:'adj',lbl:'멜론 유입'},
+    {name:'케이뱅크',m:'clb',lbl:'케이뱅크 배민클럽'},
+    {name:'나라사랑카드',m:'clb',lbl:'나라사랑카드 배민클럽'},
+    {name:'삼성카드',m:'adj',lbl:'삼성카드 유입'},
+    {name:'토스증권',m:'adj',lbl:'토스증권 유입'},
+    {name:'멜론',m:'clb',lbl:'멜론 배민클럽'},
+  ];
+
+  const anomalies=[];
+  checks.forEach(({name,m,lbl})=>{
+    const P=PARTNERS[name]; if(!P) return;
+    const cur=P[m][i], prv=P[m][prev];
+    if(cur===0&&prv===0) return;
+    const diff=cur-prv;
+    const p=prv>0?((cur-prv)/prv*100):null;
+    if(p===null) return;
+    if((Math.abs(p)>=80&&Math.abs(diff)>=50)||(Math.abs(p)>=40&&Math.abs(diff)>=500)){
+      anomalies.push({name,m,lbl,cur,prv,p,diff,color:P.color,group:P.group});
+    }
+  });
+  anomalies.sort((a,b)=>Math.abs(b.diff)-Math.abs(a.diff));
+
+  // Total level
+  const tAdj=[TOT.adj[i],TOT.adj[prev]];
+  const tPrm=[TOT.prm[i],TOT.prm[prev]];
+  if(tAdj[1]>0){
+    const p=((tAdj[0]-tAdj[1])/tAdj[1]*100);
+    if(p>40) list.push({type:'spike',icon:'🚀',title:`전체 Adjust 유입 급증 (+${p.toFixed(0)}%)`,desc:`전일 ${fmt(tAdj[1])}건 → ${fmt(tAdj[0])}건. ${fmt(tAdj[0]-tAdj[1])}건 증가.`,meta:'전사 Adjust 유입 기준'});
+    else if(p<-40) list.push({type:'drop',icon:'📉',title:`전체 Adjust 유입 급감 (${p.toFixed(0)}%)`,desc:`전일 ${fmt(tAdj[1])}건 → ${fmt(tAdj[0])}건. ${fmt(Math.abs(tAdj[0]-tAdj[1]))}건 감소.`,meta:'전사 Adjust 유입 기준'});
+  }
+
+  anomalies.slice(0,6).forEach(a=>{
+    const up=a.p>0;
+    const mN={adj:'유입',prm:'프로모션 주문',clb:'배민클럽'}[a.m];
+    list.push({
+      type:a.p>80?'spike':a.p<-40?'drop':up?'good':'info',
+      icon:a.p>80?'⚡':a.p<-40?'⚠️':up?'📈':'📊',
+      title:`${a.lbl} ${up?'증가':'감소'} (${up?'+':''}${a.p.toFixed(0)}%)`,
+      desc:`전일 ${fmt(a.prv)}건 → 오늘 ${fmt(a.cur)}건. ${up?fmt(a.diff)+'건 증가':fmt(Math.abs(a.diff))+'건 감소'}.`,
+      meta:`${a.name} · ${mN}`,color:a.color
+    });
+  });
+
+  // Contrib rate change
+  const cCur=parseFloat(TOT.contrib[i]), cPrv=parseFloat(TOT.contrib[prev]);
+  if(!isNaN(cCur)&&!isNaN(cPrv)){
+    const diff=cCur-cPrv;
+    if(Math.abs(diff)>=2) list.push({type:diff>0?'good':'info',icon:diff>0?'🎯':'📉',title:`제휴 기여도 ${diff>0?'상승':'하락'} (${diff>0?'+':''}${diff.toFixed(1)}%p)`,desc:`전일 ${cPrv}% → 오늘 ${cCur}%. 배민클럽 전사 대비 제휴 기여도가 ${Math.abs(diff).toFixed(1)}%p ${diff>0?'올랐습니다':'내렸습니다'}.`,meta:'배민클럽 기여도'});
+  }
+
+  // Weekend pattern
+  if(DAYS[i]==='토'||DAYS[i]==='일'){
+    const wd5=i>=5?Math.round(TOT.adj.slice(i-5,i).reduce((a,b)=>a+b,0)/5):null;
+    if(wd5&&tAdj[0]<wd5*0.7) list.push({type:'info',icon:'📅',title:`주말 패턴 (${DAYS[i]}요일)`,desc:`주중 평균 유입(${fmt(wd5)})보다 낮습니다. 요일 패턴 감안 필요.`,meta:'요일 참고'});
+  }
+
+  // New partner start
+  Object.entries(PARTNERS).forEach(([nm,P])=>{
+    const wasZero=P.adj[prev]===0&&P.prm[prev]===0&&P.clb[prev]===0;
+    const hasNow=P.adj[i]>0||P.prm[i]>0||P.clb[i]>0;
+    const hadBefore=i>1&&DATES.slice(0,prev).some((_,k)=>P.adj[k]>0||P.prm[k]>0);
+    if(wasZero&&hasNow&&!hadBefore&&i>1) list.push({type:'info',icon:'🆕',title:`${nm} 프로모션 시작`,desc:`오늘부터 집계됩니다. 유입 ${fmt(P.adj[i])}, 프로모션 ${fmt(P.prm[i])}, 배민클럽 ${fmt(P.clb[i])}.`,meta:nm+' · '+P.group});
+  });
+
+  const filtered = isAll ? list : list.filter(ins=>!ins.meta||ins.meta.includes(key));
+  return filtered.length?filtered:[{type:'info',icon:'✅',title:'특이사항 없음',desc:'전일 대비 급격한 변화 없이 안정적인 수준입니다.',meta:''}];
+}
+
+// ═══════════ RENDER ═══════════
+function render(){
+  const i=selIdx, prev=Math.max(0,i-1);
+  const isAll=selKey==='__all__';
+  const P=isAll?null:PARTNERS[selKey];
+  const color=isAll?'#7C8FF8':P.color;
+  const mSrc=isAll?TOT:P;
+
+  const adj=isAll?TOT.adj:P.adj;
+  const prm=isAll?TOT.prm:P.prm;
+  const clb=isAll?TOT.clb:P.clb;
+
+  document.getElementById('dateDisp').textContent=DATES[i]+' ('+DAYS[i]+')';
+  document.getElementById('secDate').textContent=DATES[i];
+  document.getElementById('tblDate').textContent=DATES[i];
+
+
+
+
+  // ════ 주요 지표 렌더 ════
+  function pctChg(cur, prv) {
+    if (!prv) return null;
+    return ((cur - prv) / prv * 100).toFixed(1);
+  }
+  function setChgBadge(cid, pid, cur, prv, prevLabel) {
+    const el = document.getElementById(cid);
+    const pel = document.getElementById(pid);
+    const p = pctChg(cur, prv);
+    if (p === null) { el.textContent='—'; el.className='chg neu'; }
+    else { const up=parseFloat(p)>=0; el.textContent=(up?'▲ +':'▼ ')+p+'%'; el.className='chg '+(up?'up':'dn'); }
+    pel.textContent = prevLabel;
+  }
+  function setDayRate(rateId, barId, chgId, aff, tot, prevAff, prevTot) {
+    const r = tot ? (aff/tot*100).toFixed(1) : '—';
+    const rPrev = prevTot ? (prevAff/prevTot*100).toFixed(1) : null;
+    document.getElementById(rateId).textContent = (r==='—') ? '—' : r+'%';
+    document.getElementById(barId).style.width = (r==='—') ? '0%' : Math.min(parseFloat(r),100)+'%';
+    const el = document.getElementById(chgId);
+    if (rPrev===null || r==='—') { el.textContent=''; return; }
+    const diff = (parseFloat(r)-parseFloat(rPrev)).toFixed(1);
+    const up = parseFloat(diff)>=0;
+    el.textContent=(up?'▲ +':'▼ ')+diff+'%p 전일比';
+    el.className='contrib-chg '+(up?'up':'dn');
+  }
+  function setMonRate(rateId, barId, chgId, cumAff, cumTot, prevMonAff, prevMonTot) {
+    const r = cumTot ? (cumAff/cumTot*100).toFixed(1) : '—';
+    const rPrev = prevMonTot ? (prevMonAff/prevMonTot*100).toFixed(1) : null;
+    document.getElementById(rateId).textContent = (r==='—') ? '—' : r+'%';
+    document.getElementById(barId).style.width = (r==='—') ? '0%' : Math.min(parseFloat(r),100)+'%';
+    const el = document.getElementById(chgId);
+    if (rPrev===null || r==='—') { el.textContent=''; return; }
+    const diff = (parseFloat(r)-parseFloat(rPrev)).toFixed(1);
+    const up = parseFloat(diff)>=0;
+    el.textContent=(up?'▲ +':'▼ ')+diff+'%p 전월比';
+    el.className='contrib-chg '+(up?'up':'dn');
+  }
+
+  // 당월 누적값
+  const cumAdjAff=CUM_ADJ_AFF[i], cumAdjTot=CUM_ADJ_TOT[i];
+  const cumPrmAff=CUM_PRM_AFF[i], cumPrmTot=CUM_PRM_TOT[i];
+  const cumClbAff=CUM_CLB_AFF[i], cumClbTot=CUM_CLB_TOT[i];
+
+  // 전월 누적값 (5월→없음, 6월→5월 확정)
+  const isMay = DATES[i].startsWith('2026-05');
+  const monLbl = isMay ? '5월' : '6월';
+  const prevMonAdjAff = isMay ? 0 : MAY_ADJ_AFF;
+  const prevMonAdjTot = isMay ? 0 : MAY_ADJ_TOT;
+  const prevMonPrmAff = isMay ? 0 : MAY_PRM_AFF;
+  const prevMonPrmTot = isMay ? 0 : MAY_PRM_TOT;
+  const prevMonClbAff = isMay ? 0 : MAY_CLB_AFF;
+  const prevMonClbTot = isMay ? 0 : MAY_CLB_TOT;
+
+  // 전일 당월 누적
+  const prevCumAdjAff = i>0?CUM_ADJ_AFF[prev]:0, prevCumAdjTot = i>0?CUM_ADJ_TOT[prev]:0;
+  const prevCumPrmAff = i>0?CUM_PRM_AFF[prev]:0, prevCumPrmTot = i>0?CUM_PRM_TOT[prev]:0;
+  const prevCumClbAff = i>0?CUM_CLB_AFF[prev]:0, prevCumClbTot = i>0?CUM_CLB_TOT[prev]:0;
+
+  // 제휴사 선택 시 해당 제휴사 실적, 전체 시 제휴 전체 합산(row24/row176)
+  const dayAdjAff = isAll ? ADJ_AFF_TOT[i] : adj[i];
+  const dayPrmAff = isAll ? PRM_AFF_TOT[i] : prm[i];
+  const dayClbNew = isAll ? TOT.clbNP[i] : 0;  // row86 신규
+  const dayClbRen = isAll ? (CLB_AFF[i]-TOT.clbNP[i]) : 0;  // row87 재구독
+  const dayClbAff = isAll ? CLB_AFF[i] : clb[i];
+  const prevDayAdjAff = isAll ? ADJ_AFF_TOT[prev] : adj[prev];
+  const prevDayPrmAff = isAll ? PRM_AFF_TOT[prev] : prm[prev];
+  const prevDayClbAff = isAll ? CLB_AFF[prev] : clb[prev];
+  // ── 주요 지표: 당일
+  document.getElementById('adj-day-aff').textContent = fmt(dayAdjAff);
+  document.getElementById('prm-day-aff').textContent = fmt(dayPrmAff);
+  document.getElementById('clb-day-aff').textContent = fmt(dayClbAff);
+  setChgBadge('adj-day-chg','adj-day-prev', dayAdjAff, prevDayAdjAff, '전일 '+fmt(prevDayAdjAff));
+  setChgBadge('prm-day-chg','prm-day-prev', dayPrmAff, prevDayPrmAff, '전일 '+fmt(prevDayPrmAff));
+  setChgBadge('clb-day-chg','clb-day-prev', dayClbAff, prevDayClbAff, '전일 '+fmt(prevDayClbAff));
+  const clbBd=document.getElementById('clb-day-bd');
+  if(clbBd) clbBd.textContent=isAll?'신규 '+fmt(dayClbNew)+' / 재구독 '+fmt(dayClbRen):'';
+
+  // ── 주요 지표: 당월 누적
+  const monAdjAff = isAll ? cumAdjAff : 0; // 제휴사별 월 누적은 별도 계산 필요시 확장
+  document.getElementById('adj-mon-aff').textContent = fmt(isAll?CUM_ADJ_AFF_TOT[i]:cumAdjAff);
+  document.getElementById('prm-mon-aff').textContent = fmt(isAll?CUM_PRM_AFF_TOT[i]:cumPrmAff);
+  document.getElementById('clb-mon-aff').textContent = fmt(cumClbAff);
+  const adjMonPrev = isMay ? 0 : prevMonAdjAff;
+  const prmMonPrev = isMay ? 0 : prevMonPrmAff;
+  const clbMonPrev = isMay ? 0 : prevMonClbAff;
+  const _adjMonVal=isAll?CUM_ADJ_AFF_TOT[i]:cumAdjAff, _adjMonPrev=isMay?0:MAY_ADJ_AFF_TOT;
+  const _prmMonVal=isAll?CUM_PRM_AFF_TOT[i]:cumPrmAff, _prmMonPrev=isMay?0:MAY_PRM_AFF_TOT;
+  setChgBadge('adj-mon-chg','adj-mon-prev', _adjMonVal, _adjMonPrev, isMay?'전월없음':'전월 '+fmt(_adjMonPrev));
+  setChgBadge('prm-mon-chg','prm-mon-prev', _prmMonVal, _prmMonPrev, isMay?'전월없음':'전월 '+fmt(_prmMonPrev));
+  setChgBadge('clb-mon-chg','clb-mon-prev', cumClbAff, clbMonPrev, isMay?'전월없음':'전월 '+fmt(clbMonPrev));
+
+  // ── 전사 기여도 섹션
+  document.getElementById('contribMonLbl').textContent = monLbl+' '+DATES[i].slice(8)+'일까지';
+
+  // 전사 실적 표시
+  document.getElementById('adj-day-tot').textContent = fmt(ADJ_TOT[i]);
+  document.getElementById('adj-mon-tot').textContent = fmt(cumAdjTot);
+  document.getElementById('prm-day-tot').textContent = fmt(PRM_TOT[i]);
+  document.getElementById('prm-mon-tot').textContent = fmt(cumPrmTot);
+  document.getElementById('clb-day-tot').textContent = fmt(CLB_TOT[i]);
+  document.getElementById('clb-mon-tot').textContent = fmt(cumClbTot);
+
+  // 당일 기여도
+  setDayRate('adj-day-rate','adj-day-bar','adj-day-chg2', ADJ_AFF[i],ADJ_TOT[i], ADJ_AFF[prev],ADJ_TOT[prev]);
+  setDayRate('prm-day-rate','prm-day-bar','prm-day-chg2', PRM_AFF[i],PRM_TOT[i], PRM_AFF[prev],PRM_TOT[prev]);
+  setDayRate('clb-day-rate','clb-day-bar','clb-day-chg2', CLB_AFF[i],CLB_TOT[i], CLB_AFF[prev],CLB_TOT[prev]);
+
+  // 당월 누적 기여도
+  setMonRate('adj-mon-rate','adj-mon-bar','adj-mon-chg2', cumAdjAff,cumAdjTot, prevMonAdjAff,prevMonAdjTot);
+  setMonRate('prm-mon-rate','prm-mon-bar','prm-mon-chg2', cumPrmAff,cumPrmTot, prevMonPrmAff,prevMonPrmTot);
+  setMonRate('clb-mon-rate','clb-mon-bar','clb-mon-chg2', cumClbAff,cumClbTot, prevMonClbAff,prevMonClbTot);
+
+    // ── 14일 라벨
+  const s14=Math.max(0,i-13), l14=DATES.slice(s14,i+1).map(d=>d.slice(5));
+
+  // ── ROW1: 전체 합산 차트 ─────────────────────────────────────────
+  if(isAll){
+    // ADJ 전체: 파트너 adj 합산 (실적D row 24)
+    setLeg('adjTotLeg',[['제휴 합산','var(--blue)']]);
+    upd(adjTotChart, l14, [
+      {label:'제휴 합산', data:ADJ_AFF_TOT.slice(s14,i+1), borderColor:'var(--blue)',backgroundColor:'rgba(76,110,245,.10)',borderWidth:2,pointRadius:0,tension:.3,fill:true},
+    ]);
+    // PRM 전체: 실적(D) row176 직접 사용
+    setLeg('prmTotLeg',[['제휴 합산','var(--amb)']]);
+    upd(prmTotChart, l14, [
+      {label:'제휴 합산', data:PRM_AFF_TOT.slice(s14,i+1), borderColor:'var(--amb)',backgroundColor:'rgba(245,166,35,.08)',borderWidth:2,pointRadius:0,tension:.3,fill:true},
+    ]);
+    // CLB 전체: 신규(row86=clbNP) + 재구독(row87=CLB_AFF-clbNP) stacked
+    const clbAffN=TOT.clbNP.slice(s14,i+1);
+    const clbAffR=CLB_AFF.slice(s14,i+1).map((v,k)=>v-TOT.clbNP[s14+k]);
+    setLeg('clbTotLeg',[['신규(제휴)','#3DD68C'],['재구독(제휴)','#7C8FF8']]);
+    updClbTot(l14, [
+      {label:'신규(제휴)',   type:'bar', data:clbAffN, backgroundColor:'rgba(32,180,122,.25)',borderColor:'#3DD68C',borderWidth:1,borderRadius:2,stack:'a'},
+      {label:'재구독(제휴)', type:'bar', data:clbAffR, backgroundColor:'rgba(76,110,245,.20)',borderColor:'#7C8FF8',borderWidth:1,borderRadius:2,stack:'a'},
+    ]);
+  } else {
+    setLeg('adjTotLeg',[[selKey,color]]);
+    upd(adjTotChart, l14, [
+      {label:selKey, data:P.adj.slice(s14,i+1), borderColor:color, backgroundColor:color+'22',borderWidth:2,pointRadius:2,tension:.3,fill:true},
+    ]);
+    setLeg('prmTotLeg',[[selKey,color]]);
+    upd(prmTotChart, l14, [
+      {label:selKey, data:P.prm.slice(s14,i+1), borderColor:color, backgroundColor:color+'22',borderWidth:2,pointRadius:2,tension:.3,fill:true},
+    ]);
+    setLeg('clbTotLeg',[[selKey,color]]);
+    updClbTot(l14, [
+      {label:selKey, type:'bar', data:P.clb.slice(s14,i+1), backgroundColor:color+'55',borderColor:color,borderWidth:1,borderRadius:2},
+    ]);
+  }
+
+  // ── ROW2: 상위 5개 제휴사 차트 ──────────────────────────────────────
+  const mkTop5 = (metric) => {
+    const highlight = isAll ? null : selKey;
+    return Object.entries(PARTNERS)
+      .map(([nm,p])=>({nm, color:p.color, val:p[metric][i], data:p[metric].slice(s14,i+1)}))
+      .filter(p=>p.val>0 || p.nm===highlight)
+      .sort((a,b)=>b.val-a.val)
+      .slice(0,5);
+  };
+  const top5adj = mkTop5('adj');
+  setLeg('adjTop5Leg', top5adj.map(p=>[p.nm+(p.nm===selKey?' ●':''), p.color]));
+  upd(adjTop5Chart, l14, top5adj.map(p=>({
+    label:p.nm, data:p.data, borderColor:p.color,
+    backgroundColor:'transparent', borderWidth:p.nm===selKey?2.5:1.5, pointRadius:0, tension:.3,
+    borderDash: p.nm===selKey?[]:[],
+  })));
+  const top5prm = mkTop5('prm');
+  setLeg('prmTop5Leg', top5prm.map(p=>[p.nm+(p.nm===selKey?' ●':''), p.color]));
+  upd(prmTop5Chart, l14, top5prm.map(p=>({
+    label:p.nm, data:p.data, borderColor:p.color,
+    backgroundColor:'transparent', borderWidth:p.nm===selKey?2.5:1.5, pointRadius:0, tension:.3,
+  })));
+  const top5clb = mkTop5('clb');
+  setLeg('clbTop5Leg', top5clb.map(p=>[p.nm+(p.nm===selKey?' ●':''), p.color]));
+  upd(clbTop5Chart, l14, top5clb.map(p=>({
+    label:p.nm, data:p.data, borderColor:p.color,
+    backgroundColor:'transparent', borderWidth:p.nm===selKey?2.5:1.5, pointRadius:0, tension:.3,
+  })));
+
+  // ── TREND CHART (전체 기간)
+  const tL=DATES.map(d=>d.slice(5));
+  if(isAll){
+    document.getElementById('trendTitle').textContent='3사 Adjust 유입 전체 트렌드';
+    setLeg('trendLeg',[['카카오페이','#FEE500'],['토스페이','#3182F6'],['네이버페이','#03C75A']]);
+    upd(trendChart, tL, [
+      {label:'카카오페이',data:PARTNERS['카카오페이'].adj,borderColor:'#FEE500',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:.3},
+      {label:'토스페이',  data:PARTNERS['토스페이'].adj,  borderColor:'#3182F6',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:.3},
+      {label:'네이버페이',data:PARTNERS['네이버페이'].adj, borderColor:'#03C75A',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:.3},
+    ]);
+  } else {
+    document.getElementById('trendTitle').textContent=selKey+' 전체 기간 트렌드';
+    setLeg('trendLeg',[[selKey+' 유입',color],['프로모션','#F5A623'],['배민클럽','#3DD68C']]);
+    upd(trendChart, tL, [
+      {label:'유입',    data:P.adj, borderColor:color,     backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:.3},
+      {label:'프로모션',data:P.prm, borderColor:'#F5A623',  backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:.3},
+      {label:'배민클럽',data:P.clb, borderColor:'#3DD68C',  backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:.3},
+    ]);
+  }
+
+  // ── TABLE
+  const rows=Object.entries(PARTNERS).map(([nm,p])=>({nm,color:p.color,adj:p.adj[i],prm:p.prm[i],clb:p.clb[i]})).filter(r=>r.adj+r.prm+r.clb>0).sort((a,b)=>(b.adj+b.prm)-(a.adj+a.prm));
+  const tA=Math.max(...rows.map(r=>r.adj),1),tP=Math.max(...rows.map(r=>r.prm),1),tC=Math.max(...rows.map(r=>r.clb),1);
+  document.getElementById('tblBody').innerHTML=rows.map(r=>{
+    const hl=selKey===r.nm?'background:rgba(0,0,0,.03)':'';
+    return `<tr style="${hl}"><td><span class="pc"><span class="psq" style="background:${r.color}"></span>${r.nm}</span></td><td><div class="bc"><div class="bar"><div class="bf" style="width:${Math.round(r.adj/tA*100)}%;background:${r.color}"></div></div>${fmt(r.adj)}</div></td><td><div class="bc"><div class="bar"><div class="bf" style="width:${Math.round(r.prm/tP*100)}%;background:${r.color}"></div></div>${fmt(r.prm)}</div></td><td><div class="bc"><div class="bar"><div class="bf" style="width:${Math.round(r.clb/tC*100)}%;background:${r.color}"></div></div>${fmt(r.clb)}</div></td></tr>`;
+  }).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--t3);padding:12px">—</td></tr>';
+
+  // MINI
+  const payAdj=PARTNERS['카카오페이'].adj[i]+PARTNERS['토스페이'].adj[i]+PARTNERS['네이버페이'].adj[i];
+  document.getElementById('mShare').textContent=TOT.adj[i]?Math.round(payAdj/TOT.adj[i]*100)+'%':'—';
+  const clbNTot=TOT.clbN[i], clbNAff=TOT.clbNP[i];
+  document.getElementById('mNewContrib').textContent=clbNTot?Math.round(clbNAff/clbNTot*100)+'%':'—';
+
+  // INSIGHTS
+  const ins=genInsights(i,isAll,selKey);
+  document.getElementById('insBadge').textContent=ins.length+'건';
+  document.getElementById('insArea').innerHTML=`<div class="ins-list">${ins.map(it=>`<div class="ins ${it.type}"><div class="ins-ico">${it.icon}</div><div class="ins-body"><div class="ins-title">${it.title}</div><div class="ins-desc">${it.desc}</div>${it.meta?`<div class="ins-meta">${it.meta}</div>`:''}</div></div>`).join('')}</div>`;
+}
+
+// ═══════════ INIT ═══════════
+buildDropdown();
+try { initCharts(); } catch(e) { console.warn('Chart init failed:', e); }
+render();
+</script>
+</body>
+</html>
