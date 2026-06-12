@@ -98,13 +98,13 @@ def fetch_adjust(svc, dates):
     return total, pay_only, by_partner
 
 def fetch_prm(svc, dates):
-    """주문_쿠폰발급사용 시트: F=날짜, H=주문수, I=제휴사"""
+    """주문_쿠폰발급사용 시트: F=날짜(시리얼), H=주문수, I=제휴사"""
     rows = get_range(svc, "주문_쿠폰발급사용", "F2:I")
     by_p = defaultdict(lambda: defaultdict(int))
     for row in rows:
         if len(row) < 3: continue
-        d = str(row[0]).strip()
-        if not re.match(r"\d{4}-\d{2}-\d{2}", d) or d < START: continue
+        d = parse_date(row[0])  # 시리얼 숫자 → YYYY-MM-DD 변환
+        if not d or d < START: continue
         partner = (str(row[3]).strip() if len(row) > 3 else "") or "기타"
         if "#N/A" in partner: partner = "기타"
         # 우리비씨 → 우리카드로 통합
