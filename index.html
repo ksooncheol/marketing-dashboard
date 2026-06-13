@@ -662,7 +662,7 @@ document.addEventListener('click',e=>{if(!document.getElementById('dw').contains
 function moveDate(d){
   const n=selIdx+d;
   if(n<0||n>=DATES.length) return;
-  if(d>0&&TOT.adj[n]===0&&TOT.prm[n]===0) return;
+  if(d>0&&ADJ_AFF_TOT[n]===0&&PRM_AFF_TOT[n]===0&&CLB_AFF[n]===0) return;
   selIdx=n; render();
 }
 
