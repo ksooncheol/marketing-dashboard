@@ -192,6 +192,29 @@ def replace_tot_field(html, field, arr):
         print(f"  [WARN] TOT.{field} not found")
     return result
 
+def pad_tot_arrays(html, target_len):
+    """TOT 배열과 전사 독립 배열을 DATES 길이에 맞게 0으로 패딩"""
+    # TOT 오브젝트 내 배열
+    for field in ['adj', 'prm', 'clb', 'clbN', 'clbR']:
+        pattern = rf'(?<![\'"\w]){re.escape(field)}:\[([^\]]+)\]'
+        m = re.search(pattern, html)
+        if m:
+            arr = json.loads('[' + m.group(1) + ']')
+            if len(arr) < target_len:
+                arr += [0] * (target_len - len(arr))
+                html = re.sub(pattern, f'{field}:{json.dumps(arr)}', html, count=1)
+    # 전사 독립 상수
+    for name in ['ADJ_TOT', 'PRM_TOT', 'CLB_TOT',
+                 'CUM_ADJ_TOT', 'CUM_PRM_TOT', 'CUM_CLB_TOT']:
+        pattern = rf'const {re.escape(name)}=\[([^\]]+)\];'
+        m = re.search(pattern, html)
+        if m:
+            arr = json.loads('[' + m.group(1) + ']')
+            if len(arr) < target_len:
+                arr += [0] * (target_len - len(arr))
+                html = re.sub(pattern, f'const {name}={json.dumps(arr)};', html)
+    return html
+
 def replace_partner_field(html, partner, field, arr):
     escaped = re.escape(partner)
     def sub(m):
@@ -254,6 +277,9 @@ def main():
     print("index.html 업데이트 중...")
     with open(HTML_PATH, encoding="utf-8") as f:
         html = f.read()
+
+    # 전사 배열 길이를 DATES 길이에 맞게 패딩 (전사 데이터 없는 날짜는 0)
+    html = pad_tot_arrays(html, n)
 
     # DATES, DAYS
     html = replace_const(html, "DATES", dates)
