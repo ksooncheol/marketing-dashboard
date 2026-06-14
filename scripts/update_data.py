@@ -226,6 +226,24 @@ def pad_tot_arrays(html, target_len):
                 html = re.sub(pattern, f'const {name}={json.dumps(arr)};', html)
     return html
 
+def replace_partner_monthly(html, partner, m_adj, m_prm, m_clb):
+    """파트너의 mAdj, mPrm, mClb 월별 누계 업데이트"""
+    escaped = re.escape(partner)
+    def sub(m):
+        line = m.group(0)
+        for fname, val in [('mAdj', m_adj), ('mPrm', m_prm), ('mClb', m_clb)]:
+            line = re.sub(
+                rf'{re.escape(fname)}:\{{[^}}]+\}}',
+                f'{fname}:{json.dumps(val)}',
+                line
+            )
+        return line
+    pattern = rf"'{escaped}':\{{[^\n]+\}}"
+    result, n = re.subn(pattern, sub, html)
+    if n == 0:
+        print(f"  [WARN] PARTNER monthly {partner} not found")
+    return result
+
 def replace_partner_field(html, partner, field, arr):
     escaped = re.escape(partner)
     def sub(m):
@@ -330,12 +348,27 @@ def main():
     html = re.sub(r'MAY_PRM_AFF=\d+', f'MAY_PRM_AFF={may_prm_pay}', html)
     html = re.sub(r'MAY_CLB_AFF=\d+', f'MAY_CLB_AFF={may_clb}', html)
 
-    # PARTNERS 개별 배열
+    # 월별 구간 인덱스
+    may_end   = next((i for i, d in enumerate(dates) if d == "2026-05-31"), len(dates)-1)
+    jun_start = may_end + 1
+
+    # PARTNERS 개별 배열 + 월별 누계
     zeros = [0] * n
     for partner in KNOWN_PARTNERS:
-        html = replace_partner_field(html, partner, "adj", p_adj.get(partner, zeros))
-        html = replace_partner_field(html, partner, "prm", p_prm.get(partner, zeros))
-        html = replace_partner_field(html, partner, "clb", p_clb.get(partner, zeros))
+        adj_arr = p_adj.get(partner, zeros)
+        prm_arr = p_prm.get(partner, zeros)
+        clb_arr = p_clb.get(partner, zeros)
+
+        html = replace_partner_field(html, partner, "adj", adj_arr)
+        html = replace_partner_field(html, partner, "prm", prm_arr)
+        html = replace_partner_field(html, partner, "clb", clb_arr)
+
+        # 파트너별 월 누계 (mAdj, mPrm, mClb)
+        html = replace_partner_monthly(html, partner,
+            m_adj={"may": sum(adj_arr[:may_end+1]), "jun": sum(adj_arr[jun_start:])},
+            m_prm={"may": sum(prm_arr[:may_end+1]), "jun": sum(prm_arr[jun_start:])},
+            m_clb={"may": sum(clb_arr[:may_end+1]), "jun": sum(clb_arr[jun_start:])},
+        )
 
     # 고객 인사이트
     html = replace_const(html, "INSIGHT_ADJ", insight_adj)
