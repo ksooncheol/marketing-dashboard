@@ -4,7 +4,7 @@
 매일 실행: Google Sheets 최신 데이터 → index.html 반영
 """
 
-import json, re, os
+import json, re, os, time
 from datetime import date, timedelta
 from collections import defaultdict
 from googleapiclient.discovery import build
@@ -30,13 +30,24 @@ def get_service():
         creds, _ = default(scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"])
     return build("sheets", "v4", credentials=creds, cache_discovery=False)
 
-def get_range(svc, tab, rng):
-    res = svc.spreadsheets().values().get(
-        spreadsheetId=SHEET_ID,
-        range=f"{tab}!{rng}",
-        valueRenderOption="UNFORMATTED_VALUE"
-    ).execute()
-    return res.get("values", [])
+def get_range(svc, tab, rng, retries=3, delay=10):
+    """타임아웃/일시 오류 시 최대 retries회 재시도"""
+    for attempt in range(1, retries + 1):
+        try:
+            res = svc.spreadsheets().values().get(
+                spreadsheetId=SHEET_ID,
+                range=f"{tab}!{rng}",
+                valueRenderOption="UNFORMATTED_VALUE"
+            ).execute()
+            return res.get("values", [])
+        except Exception as e:
+            if attempt < retries:
+                print(f"  [재시도 {attempt}/{retries}] {tab} 오류: {e} — {delay}초 후 재시도")
+                time.sleep(delay)
+                delay *= 2  # 지수 백오프: 10s → 20s → 40s
+            else:
+                print(f"  [실패] {tab} 최종 오류: {e}")
+                raise
 
 # ── 파싱 헬퍼 ─────────────────────────────────────────
 

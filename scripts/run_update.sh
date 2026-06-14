@@ -3,8 +3,6 @@
 # - 매일 오전 9시 실행
 # - 맥이 꺼져 있어 9시를 놓쳤으면 켜질 때 자동 실행
 
-set -e
-
 REPO_DIR="/Users/soon/marketing-dashboard"
 VENV="/Users/soon/dashboard/venv"
 LOG="$REPO_DIR/scripts/update.log"
@@ -24,9 +22,21 @@ echo "=== $(date '+%Y-%m-%d %H:%M:%S') 업데이트 시작 ===" >> "$LOG"
 # Python 환경 활성화 (Flask 앱 venv 재사용)
 source "$VENV/bin/activate"
 
-# 데이터 업데이트
+# 데이터 업데이트 (실패 시 최대 3회 재시도, 60초 간격)
 cd "$REPO_DIR"
-python scripts/update_data.py >> "$LOG" 2>&1
+MAX_RETRY=3
+for attempt in $(seq 1 $MAX_RETRY); do
+  if python scripts/update_data.py >> "$LOG" 2>&1; then
+    break
+  fi
+  if [ "$attempt" -lt "$MAX_RETRY" ]; then
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [재시도 $attempt/$MAX_RETRY] 60초 후 재시도..." >> "$LOG"
+    sleep 60
+  else
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [실패] $MAX_RETRY회 시도 모두 실패" >> "$LOG"
+    exit 1
+  fi
+done
 
 # 변경사항 있을 때만 커밋 & 푸시
 git add index.html

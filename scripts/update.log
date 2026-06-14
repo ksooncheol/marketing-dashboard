@@ -35,3 +35,75 @@ index.html 업데이트 중...
 완료! 2026-06-12 기준 데이터로 업데이트됨.
 변경사항 없음
 === 완료 ===
+2026-06-13 09:11:49 이미 오늘 실행됨 (스킵)
+=== 2026-06-13 13:02:27 업데이트 시작 ===
+/Users/soon/dashboard/venv/lib/python3.9/site-packages/google/api_core/_python_version_support.py:242: FutureWarning: You are using a non-supported Python version (3.9.6). Google will not post any further updates to google.api_core supporting this Python version. Please upgrade to the latest Python version, or at least Python 3.10, and then update google.api_core.
+  warnings.warn(message, FutureWarning)
+날짜 범위: 2026-05-01 ~ 2026-06-12 (43일)
+adjust 시트 로드 중...
+주문_쿠폰발급사용 시트 로드 중...
+배민클럽 시트 로드 중...
+고객 인사이트 시트 로드 중...
+index.html 업데이트 중...
+완료! 2026-06-12 기준 데이터로 업데이트됨.
+To https://github.com/ksooncheol/marketing-dashboard.git
+   e0b56d1..5273a19  main -> main
+푸시 완료
+=== 완료 ===
+=== 2026-06-13 13:02:55 업데이트 시작 ===
+/Users/soon/dashboard/venv/lib/python3.9/site-packages/google/api_core/_python_version_support.py:242: FutureWarning: You are using a non-supported Python version (3.9.6). Google will not post any further updates to google.api_core supporting this Python version. Please upgrade to the latest Python version, or at least Python 3.10, and then update google.api_core.
+  warnings.warn(message, FutureWarning)
+날짜 범위: 2026-05-01 ~ 2026-06-12 (43일)
+adjust 시트 로드 중...
+주문_쿠폰발급사용 시트 로드 중...
+배민클럽 시트 로드 중...
+고객 인사이트 시트 로드 중...
+index.html 업데이트 중...
+완료! 2026-06-12 기준 데이터로 업데이트됨.
+변경사항 없음
+=== 완료 ===
+=== 2026-06-14 09:13:21 업데이트 시작 ===
+/Users/soon/dashboard/venv/lib/python3.9/site-packages/google/api_core/_python_version_support.py:242: FutureWarning: You are using a non-supported Python version (3.9.6). Google will not post any further updates to google.api_core supporting this Python version. Please upgrade to the latest Python version, or at least Python 3.10, and then update google.api_core.
+  warnings.warn(message, FutureWarning)
+날짜 범위: 2026-05-01 ~ 2026-06-13 (44일)
+adjust 시트 로드 중...
+주문_쿠폰발급사용 시트 로드 중...
+배민클럽 시트 로드 중...
+Traceback (most recent call last):
+  File "/Users/soon/marketing-dashboard/scripts/update_data.py", line 339, in <module>
+    main()
+  File "/Users/soon/marketing-dashboard/scripts/update_data.py", line 258, in main
+    clb_tot, clb_new, p_clb = fetch_clb(svc, dates)
+  File "/Users/soon/marketing-dashboard/scripts/update_data.py", line 123, in fetch_clb
+    rows_api  = get_range(svc, "배민클럽_토스API", "A2:H")
+  File "/Users/soon/marketing-dashboard/scripts/update_data.py", line 34, in get_range
+    res = svc.spreadsheets().values().get(
+  File "/Users/soon/dashboard/venv/lib/python3.9/site-packages/googleapiclient/_helpers.py", line 130, in positional_wrapper
+    return wrapped(*args, **kwargs)
+  File "/Users/soon/dashboard/venv/lib/python3.9/site-packages/googleapiclient/http.py", line 923, in execute
+    resp, content = _retry_request(
+  File "/Users/soon/dashboard/venv/lib/python3.9/site-packages/googleapiclient/http.py", line 222, in _retry_request
+    raise exception
+  File "/Users/soon/dashboard/venv/lib/python3.9/site-packages/googleapiclient/http.py", line 191, in _retry_request
+    resp, content = http.request(uri, method, *args, **kwargs)
+  File "/Users/soon/dashboard/venv/lib/python3.9/site-packages/google_auth_httplib2.py", line 216, in request
+    response, content = self.http.request(
+  File "/Users/soon/dashboard/venv/lib/python3.9/site-packages/httplib2/__init__.py", line 1727, in request
+    (response, content) = self._request(
+  File "/Users/soon/dashboard/venv/lib/python3.9/site-packages/httplib2/__init__.py", line 1447, in _request
+    (response, content) = self._conn_request(conn, request_uri, method, body, headers)
+  File "/Users/soon/dashboard/venv/lib/python3.9/site-packages/httplib2/__init__.py", line 1399, in _conn_request
+    response = conn.getresponse()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 1349, in getresponse
+    response.begin()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 316, in begin
+    version, status, reason = self._read_status()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 277, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1241, in recv_into
+    return self.read(nbytes, buffer)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1099, in read
+    return self._sslobj.read(len, buffer)
+socket.timeout: The read operation timed out
