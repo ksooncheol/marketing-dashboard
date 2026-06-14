@@ -856,7 +856,7 @@ function render(){
     el.className='contrib-chg '+(up?'up':'dn');
   }
 
-  // 당월 누적값
+  // 당월 누적값 (전체)
   const cumAdjAff=CUM_ADJ_AFF[i], cumAdjTot=CUM_ADJ_TOT[i];
   const cumPrmAff=CUM_PRM_AFF[i], cumPrmTot=CUM_PRM_TOT[i];
   const cumClbAff=CUM_CLB_AFF[i], cumClbTot=CUM_CLB_TOT[i];
@@ -875,6 +875,17 @@ function render(){
   const prevCumAdjAff = i>0?CUM_ADJ_AFF[prev]:0, prevCumAdjTot = i>0?CUM_ADJ_TOT[prev]:0;
   const prevCumPrmAff = i>0?CUM_PRM_AFF[prev]:0, prevCumPrmTot = i>0?CUM_PRM_TOT[prev]:0;
   const prevCumClbAff = i>0?CUM_CLB_AFF[prev]:0, prevCumClbTot = i>0?CUM_CLB_TOT[prev]:0;
+
+  // ── 파트너별 당월 누계 계산 ──
+  const curMonth = DATES[i].slice(0,7);
+  const monthStartIdx = DATES.findIndex(d=>d.startsWith(curMonth));
+  const mayEndIdx = DATES.findIndex(d=>d.startsWith('2026-06')) - 1; // 5월 마지막 인덱스
+  const pAdjMon = isAll ? CUM_ADJ_AFF_TOT[i] : adj.slice(monthStartIdx, i+1).reduce((a,b)=>a+b, 0);
+  const pPrmMon = isAll ? CUM_PRM_AFF_TOT[i] : prm.slice(monthStartIdx, i+1).reduce((a,b)=>a+b, 0);
+  const pClbMon = isAll ? CUM_CLB_AFF[i]     : clb.slice(monthStartIdx, i+1).reduce((a,b)=>a+b, 0);
+  const pAdjMonPrev = isMay ? 0 : (isAll ? MAY_ADJ_AFF_TOT : adj.slice(0, mayEndIdx+1).reduce((a,b)=>a+b, 0));
+  const pPrmMonPrev = isMay ? 0 : (isAll ? MAY_PRM_AFF_TOT : prm.slice(0, mayEndIdx+1).reduce((a,b)=>a+b, 0));
+  const pClbMonPrev = isMay ? 0 : (isAll ? MAY_CLB_AFF     : clb.slice(0, mayEndIdx+1).reduce((a,b)=>a+b, 0));
 
   // 제휴사 선택 시 해당 제휴사 실적, 전체 시 제휴 전체 합산(row24/row176)
   const dayAdjAff = isAll ? ADJ_AFF_TOT[i] : adj[i];
@@ -895,19 +906,13 @@ function render(){
   const clbBd=document.getElementById('clb-day-bd');
   if(clbBd) clbBd.textContent=isAll?'신규 '+fmt(dayClbNew)+' / 재구독 '+fmt(dayClbRen):'';
 
-  // ── 주요 지표: 당월 누적
-  const monAdjAff = isAll ? cumAdjAff : 0; // 제휴사별 월 누적은 별도 계산 필요시 확장
-  document.getElementById('adj-mon-aff').textContent = fmt(isAll?CUM_ADJ_AFF_TOT[i]:cumAdjAff);
-  document.getElementById('prm-mon-aff').textContent = fmt(isAll?CUM_PRM_AFF_TOT[i]:cumPrmAff);
-  document.getElementById('clb-mon-aff').textContent = fmt(cumClbAff);
-  const adjMonPrev = isMay ? 0 : prevMonAdjAff;
-  const prmMonPrev = isMay ? 0 : prevMonPrmAff;
-  const clbMonPrev = isMay ? 0 : prevMonClbAff;
-  const _adjMonVal=isAll?CUM_ADJ_AFF_TOT[i]:cumAdjAff, _adjMonPrev=isMay?0:MAY_ADJ_AFF_TOT;
-  const _prmMonVal=isAll?CUM_PRM_AFF_TOT[i]:cumPrmAff, _prmMonPrev=isMay?0:MAY_PRM_AFF_TOT;
-  setChgBadge('adj-mon-chg','adj-mon-prev', _adjMonVal, _adjMonPrev, isMay?'전월없음':'전월 '+fmt(_adjMonPrev));
-  setChgBadge('prm-mon-chg','prm-mon-prev', _prmMonVal, _prmMonPrev, isMay?'전월없음':'전월 '+fmt(_prmMonPrev));
-  setChgBadge('clb-mon-chg','clb-mon-prev', cumClbAff, clbMonPrev, isMay?'전월없음':'전월 '+fmt(clbMonPrev));
+  // ── 주요 지표: 당월 누적 (파트너 선택 시 해당 파트너 기준)
+  document.getElementById('adj-mon-aff').textContent = fmt(pAdjMon);
+  document.getElementById('prm-mon-aff').textContent = fmt(pPrmMon);
+  document.getElementById('clb-mon-aff').textContent = fmt(pClbMon);
+  setChgBadge('adj-mon-chg','adj-mon-prev', pAdjMon, pAdjMonPrev, isMay?'전월없음':'전월 '+fmt(pAdjMonPrev));
+  setChgBadge('prm-mon-chg','prm-mon-prev', pPrmMon, pPrmMonPrev, isMay?'전월없음':'전월 '+fmt(pPrmMonPrev));
+  setChgBadge('clb-mon-chg','clb-mon-prev', pClbMon, pClbMonPrev, isMay?'전월없음':'전월 '+fmt(pClbMonPrev));
 
   // ── 전사 기여도 섹션
   document.getElementById('contribMonLbl').textContent = monLbl+' '+DATES[i].slice(8)+'일까지';
