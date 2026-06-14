@@ -8,6 +8,72 @@ import json, re, os, time
 from datetime import date, timedelta
 from collections import defaultdict
 from googleapiclient.discovery import build
+import trino as trino_lib
+
+# ── Trino 연결 ────────────────────────────────────────
+def get_trino_conn():
+    user = open(os.path.expanduser("~/.trino_user")).read().strip()
+    pw   = open(os.path.expanduser("~/.trino_password")).read().strip()
+    return trino_lib.dbapi.connect(
+        host='trino-gateway-auth.ds.woowa.in',
+        port=443,
+        user=user,
+        http_scheme='https',
+        auth=trino_lib.auth.BasicAuthentication(user, pw),
+        catalog='iceberg',
+        schema='default',
+    )
+
+# ── campaign_name → 제휴사명 매핑 ─────────────────────
+# (campaign_name, adgroup_name) 또는 (campaign_name, '') 매핑
+CAMPAIGN_MAP = {
+    ('kakaopay', ''):                              '카카오페이',
+    ('aff-kakaopay', ''):                          '카카오페이',
+    ('aff-naverpay', ''):                          '네이버페이',
+    ('aff-nav erpay', ''):                         '네이버페이',
+    ('pts-affiliate_toss-api-ci-registration', ''): '토스페이',
+    ('pts-affiliate_toss-api-join-baemin', ''):    '토스페이',
+    ('pts-affiliate_toss-api-member-bmclub', ''):  '토스페이',
+    ('aff-tosspa', ''):                            '토스페이',
+    ('aff-tosspay', ''):                           '토스페이',
+    ('aff_tosspay', ''):                           '토스페이',
+    ('aff-toss_tossetc_mix_pts_toss-coupon', ''):  '토스페이',
+    ('samsung_card', ''):                          '삼성카드',
+    ('aff-sscard', ''):                            '삼성카드',
+    ('aff-shcard', ''):                            '신한카드',
+    ('aff-kbcard', ''):                            'KB국민카드',
+    ('aff-hncard', ''):                            '하나카드',
+    ('aff-kbank', ''):                             '케이뱅크',
+    ('aff-melon', ''):                             '멜론',
+    ('aff-lotte', ''):                             '롯데백화점',
+    ('aff-tossplace', ''):                         '토스플레이스',
+    ('aff-kt', ''):                                'KT',
+    ('aff-lguplus', ''):                           'LGU+',
+    ('aff-amore', ''):                             '아모레',
+    ('aff-tosssec', ''):                           '토스증권',
+    # adgroup_name으로 구분되는 케이스
+    ('aff-wrcard', '2605_wrcard_crm'):             '비씨카드',
+    ('aff-wrcard', '2606_wrcard_crm'):             '우리카드',
+    ('aff-wrcard', ''):                            '우리카드',
+    ('aff-bccard', '2605_bccard_crm'):             '우리카드',
+    ('aff-bccard', ''):                            '비씨카드',
+}
+
+def map_partner(campaign_name, adgroup_name=''):
+    """campaign_name → 제휴사명 변환"""
+    # 정확 매칭 (campaign + adgroup)
+    key = (campaign_name, adgroup_name)
+    if key in CAMPAIGN_MAP:
+        return CAMPAIGN_MAP[key]
+    # campaign_name만으로 매칭
+    key2 = (campaign_name, '')
+    if key2 in CAMPAIGN_MAP:
+        return CAMPAIGN_MAP[key2]
+    # 접두어 매칭
+    for (camp, _), partner in CAMPAIGN_MAP.items():
+        if campaign_name.startswith(camp) and camp:
+            return partner
+    return '기타'
 
 SHEET_ID = "1LImApdHZcM7WcfU9yy45eftZl9Gz0ombMUxbbS4m7e4"
 START    = "2026-05-01"
@@ -166,8 +232,88 @@ def fetch_clb(svc, dates):
 
     return clb_tot, clb_new, by_partner
 
+def fetch_insight_adj_trino(yesterday: str, existing: dict) -> dict:
+    """Trino에서 어제 유입 고객 세그먼트 가져와 기존 데이터에 추가"""
+    SQL = f"""
+WITH base AS (
+  SELECT
+    CAST(date_add('hour', 9, engagement_time) AS DATE) AS part_date,
+    a.campaign_name, a.adgroup_name,
+    user_id AS mem_no
+  FROM dhcentraladjust.cmdf_adjust_raw_data_main_installs a
+  WHERE date(date_add('hour', 9, engagement_time)) = DATE '{yesterday}'
+    AND date(part_date) BETWEEN DATE '{yesterday}' - INTERVAL '1' DAY
+                             AND DATE '{yesterday}'
+    AND (
+      a.campaign_name LIKE 'aff%' OR a.campaign_name LIKE 'pts%'
+      OR a.campaign_name LIKE '%samsung%' OR a.campaign_name LIKE '%kakaopay%'
+      OR a.campaign_name LIKE '%tosspay%' OR a.campaign_name LIKE '%toss%'
+    )
+),
+base_dedup AS (
+  SELECT DISTINCT part_date, campaign_name, adgroup_name, mem_no FROM base
+),
+order_history AS (
+  SELECT bd.part_date, bd.campaign_name, bd.adgroup_name, bd.mem_no,
+    COUNT(CASE WHEN o.part_date >= CAST(bd.part_date - INTERVAL '30' DAY AS VARCHAR)
+                AND o.part_date < CAST(bd.part_date AS VARCHAR) THEN 1 END) AS ord_cnt_1m,
+    COUNT(CASE WHEN o.part_date >= CAST(bd.part_date - INTERVAL '90' DAY AS VARCHAR)
+                AND o.part_date < CAST(bd.part_date AS VARCHAR) THEN 1 END) AS ord_cnt_3m,
+    COUNT(CASE WHEN o.part_date >= CAST(bd.part_date - INTERVAL '180' DAY AS VARCHAR)
+                AND o.part_date < CAST(bd.part_date AS VARCHAR) THEN 1 END) AS ord_cnt_6m
+  FROM base_dedup bd
+  LEFT JOIN sborder_mart.order_master o
+    ON bd.mem_no = o.mem_no
+    AND o.part_date >= '2025-06-01'
+    AND o.part_date < CAST(bd.part_date AS VARCHAR)
+    AND o.is_test = 0 AND o.is_closed = 1
+  GROUP BY bd.part_date, bd.campaign_name, bd.adgroup_name, bd.mem_no
+),
+classified AS (
+  SELECT part_date, campaign_name, adgroup_name, mem_no,
+    CASE
+      WHEN ord_cnt_1m >= 10 THEN '활성+고빈도'
+      WHEN ord_cnt_1m >= 4  THEN '활성+중빈도'
+      WHEN ord_cnt_1m >= 1  THEN '활성+저빈도'
+      WHEN ord_cnt_3m >= 1  THEN '단기이탈'
+      WHEN ord_cnt_6m >= 1  THEN '장기이탈'
+      ELSE '초장기이탈'
+    END AS seg
+  FROM order_history
+)
+SELECT
+  CAST(part_date AS VARCHAR)     AS part_date,
+  CAST(campaign_name AS VARCHAR) AS campaign_name,
+  CAST(adgroup_name AS VARCHAR)  AS adgroup_name,
+  CAST(seg AS VARCHAR)           AS seg,
+  COUNT(DISTINCT mem_no)         AS uv
+FROM classified
+GROUP BY part_date, campaign_name, adgroup_name, seg
+ORDER BY part_date, campaign_name, seg
+"""
+    result = dict(existing)  # 기존 데이터 복사
+    try:
+        conn = get_trino_conn()
+        cur  = conn.cursor()
+        cur.execute(SQL)
+        rows = cur.fetchall()
+        print(f"  Trino 유입 인사이트: {len(rows)}행 수신")
+
+        day_data = defaultdict(lambda: defaultdict(int))
+        for part_date, campaign_name, adgroup_name, seg, uv in rows:
+            partner = map_partner(campaign_name, adgroup_name or '')
+            if partner == '기타': continue
+            day_data[partner][seg] += int(uv)
+
+        if day_data:
+            result[yesterday] = {p: dict(segs) for p, segs in day_data.items()}
+    except Exception as e:
+        print(f"  [WARN] Trino 유입 인사이트 실패: {e} → 기존 데이터 유지")
+    return result
+
+
 def fetch_insights(svc):
-    """고객 인사이트 시트"""
+    """주문 고객 인사이트 (Google Sheets)"""
     def parse_insight(rows, date_col, cnt_col, seg_col, partner_col):
         data = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
         for row in rows:
@@ -181,10 +327,7 @@ def fetch_insights(svc):
             data[d][partner][seg] += parse_int(row[cnt_col])
         return {d: {p: dict(s) for p, s in pd.items()} for d, pd in data.items()}
 
-    return (
-        parse_insight(get_range(svc, "유입adjust_고객인사이트", "A2:F"), 0, 3, 2, 5),
-        parse_insight(get_range(svc, "프로모션주문_고객인사이트", "A2:E"), 0, 3, 2, 4),
-    )
+    return parse_insight(get_range(svc, "프로모션주문_고객인사이트", "A2:E"), 0, 3, 2, 4)
 
 # ── HTML 치환 ─────────────────────────────────────────
 
@@ -286,8 +429,16 @@ def main():
     print("배민클럽 시트 로드 중...")
     clb_tot, clb_new, p_clb = fetch_clb(svc, dates)
 
-    print("고객 인사이트 시트 로드 중...")
-    insight_adj, insight_prm = fetch_insights(svc)
+    print("주문 고객 인사이트 시트 로드 중...")
+    insight_prm = fetch_insights(svc)
+
+    print("유입 고객 인사이트 Trino 쿼리 중...")
+    # 기존 INSIGHT_ADJ 읽어서 어제 데이터만 Trino로 교체/추가
+    with open(HTML_PATH, encoding="utf-8") as _f:
+        _html_tmp = _f.read()
+    _m = re.search(r'const INSIGHT_ADJ=({.*?});', _html_tmp, re.DOTALL)
+    existing_adj = json.loads(_m.group(1)) if _m else {}
+    insight_adj = fetch_insight_adj_trino(yesterday, existing_adj)
 
     # 누적 배열
     cum_adj_tot = make_cum(adj_tot, dates)
