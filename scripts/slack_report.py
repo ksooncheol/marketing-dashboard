@@ -7,12 +7,14 @@
 
 import json, re, os, urllib.request
 
-HTML_PATH      = os.path.join(os.path.dirname(__file__), "..", "index.html")
-WEBHOOK_DM     = open(os.path.expanduser("~/.slack_webhook_dm")).read().strip()
-# 팀 채널 웹훅이 있으면 사용, 없으면 DM으로 발송
-_ch_path = os.path.expanduser("~/.slack_webhook_channel")
-WEBHOOK_CH     = open(_ch_path).read().strip() if os.path.exists(_ch_path) else WEBHOOK_DM
-DASHBOARD_URL  = "https://ksooncheol.github.io/marketing-dashboard/"
+HTML_PATH     = os.path.join(os.path.dirname(__file__), "..", "index.html")
+WEBHOOK_DM    = open(os.path.expanduser("~/.slack_webhook_dm")).read().strip()
+_ch_path      = os.path.expanduser("~/.slack_webhook_channel")
+WEBHOOK_CH    = open(_ch_path).read().strip() if os.path.exists(_ch_path) else None
+_tok_path     = os.path.expanduser("~/.slack_bot_token")
+BOT_TOKEN     = open(_tok_path).read().strip() if os.path.exists(_tok_path) else None
+CHANNEL_ID    = "C07EM615TUN"   # #wg-제휴사업팀-마케팅제휴파트
+DASHBOARD_URL = "https://ksooncheol.github.io/marketing-dashboard/"
 
 # ── 헬퍼 ──────────────────────────────────────────────
 
@@ -42,6 +44,17 @@ def send_webhook(url, text):
                                   headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(req) as r:
         return r.read().decode()
+
+def send_bot(token, channel, text):
+    data = json.dumps({"channel": channel, "text": text}).encode()
+    req  = urllib.request.Request(
+        "https://slack.com/api/chat.postMessage", data=data,
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"})
+    with urllib.request.urlopen(req) as r:
+        res = json.loads(r.read())
+    if not res.get("ok"):
+        raise Exception(res.get("error", "unknown"))
+    return res
 
 # ── 데이터 파싱 ───────────────────────────────────────
 
@@ -102,12 +115,33 @@ for idx, (name, val) in enumerate(top3, 1):
 
 msg += f"━━━━━━━━━━━━━━━━━━━━\n🔗 대시보드: {DASHBOARD_URL}"
 
-# ── 발송 ─────────────────────────────────────────────
+# ── 발송: 봇 토큰(채널) → 채널 웹훅 → DM 웹훅 순으로 시도 ──────
 
-try:
-    send_webhook(WEBHOOK_CH, msg)
-    dest = "팀 채널" if WEBHOOK_CH != WEBHOOK_DM else "개인 DM"
-    print(f"리포트 발송 완료 ({dest}): {d_str}")
-except Exception as e:
-    print(f"리포트 발송 실패: {e}")
-    exit(1)
+sent = False
+
+# 1순위: 봇 토큰으로 팀 채널 직접 발송
+if BOT_TOKEN and not sent:
+    try:
+        send_bot(BOT_TOKEN, CHANNEL_ID, msg)
+        print(f"리포트 발송 완료 (팀 채널/봇): {d_str}")
+        sent = True
+    except Exception as e:
+        print(f"  봇 채널 발송 실패: {e} → 다음 방법 시도")
+
+# 2순위: 팀 채널 웹훅
+if WEBHOOK_CH and not sent:
+    try:
+        send_webhook(WEBHOOK_CH, msg)
+        print(f"리포트 발송 완료 (팀 채널/웹훅): {d_str}")
+        sent = True
+    except Exception as e:
+        print(f"  채널 웹훅 발송 실패: {e} → DM으로 전환")
+
+# 3순위: 개인 DM 웹훅 (fallback)
+if not sent:
+    try:
+        send_webhook(WEBHOOK_DM, msg)
+        print(f"리포트 발송 완료 (개인 DM/fallback): {d_str}")
+    except Exception as e:
+        print(f"리포트 발송 최종 실패: {e}")
+        exit(1)
