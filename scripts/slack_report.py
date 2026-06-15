@@ -18,6 +18,17 @@ else:
     print("네트워크 연결 실패 — 리포트 중단")
     exit(1)
 
+import datetime
+
+# 오늘 업데이트 완료 여부 확인
+LAST_RUN_FILE = os.path.join(os.path.dirname(__file__), "last_run.txt")
+TODAY         = datetime.date.today().strftime("%Y-%m-%d")
+last_run      = open(LAST_RUN_FILE).read().strip() if os.path.exists(LAST_RUN_FILE) else ""
+
+if last_run != TODAY:
+    print(f"오늘 업데이트 미완료 (last_run: {last_run}) → 팀 채널 발송 스킵")
+    exit(0)
+
 HTML_PATH     = os.path.join(os.path.dirname(__file__), "..", "index.html")
 WEBHOOK_DM    = open(os.path.expanduser("~/.slack_webhook_dm")).read().strip()
 _ch_path      = os.path.expanduser("~/.slack_webhook_channel")
