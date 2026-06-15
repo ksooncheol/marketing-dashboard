@@ -5,7 +5,18 @@
 - #wg-제휴사업팀-마케팅제휴파트 채널에 발송
 """
 
-import json, re, os, urllib.request
+import json, re, os, urllib.request, time, subprocess
+
+# 네트워크 연결 대기 (최대 60초)
+for _i in range(12):
+    try:
+        urllib.request.urlopen("https://www.google.com", timeout=3)
+        break
+    except Exception:
+        time.sleep(5)
+else:
+    print("네트워크 연결 실패 — 리포트 중단")
+    exit(1)
 
 HTML_PATH     = os.path.join(os.path.dirname(__file__), "..", "index.html")
 WEBHOOK_DM    = open(os.path.expanduser("~/.slack_webhook_dm")).read().strip()

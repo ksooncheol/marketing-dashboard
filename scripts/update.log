@@ -119,3 +119,23 @@ index.html 업데이트 중...
 완료! 2026-06-13 기준 데이터로 업데이트됨.
 변경사항 없음
 === 완료 ===
+=== 2026-06-15 10:00:02 업데이트 시작 ===
+/Users/soon/dashboard/venv/lib/python3.9/site-packages/google/api_core/_python_version_support.py:242: FutureWarning: You are using a non-supported Python version (3.9.6). Google will not post any further updates to google.api_core supporting this Python version. Please upgrade to the latest Python version, or at least Python 3.10, and then update google.api_core.
+  warnings.warn(message, FutureWarning)
+/Users/soon/dashboard/venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+날짜 범위: 2026-05-01 ~ 2026-06-14 (45일)
+adjust 시트 로드 중...
+주문_쿠폰발급사용 시트 로드 중...
+배민클럽 시트 로드 중...
+주문 고객 인사이트 시트 로드 중...
+유입 고객 인사이트 Trino 쿼리 중...
+  Trino 유입 인사이트: 142행 수신
+index.html 업데이트 중...
+완료! 2026-06-14 기준 데이터로 업데이트됨.
+[main a5eed78] 대시보드 자동 업데이트 2026-06-15
+ 1 file changed, 46 insertions(+), 46 deletions(-)
+To https://github.com/ksooncheol/marketing-dashboard.git
+   240d538..a5eed78  main -> main
+푸시 완료
+=== 완료 ===

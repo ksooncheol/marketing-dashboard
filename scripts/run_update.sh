@@ -9,6 +9,15 @@ LOG="$REPO_DIR/scripts/update.log"
 LAST_RUN_FILE="$REPO_DIR/scripts/last_run.txt"
 SLACK_WEBHOOK=$(cat ~/.slack_webhook_dm 2>/dev/null)
 
+# 네트워크 연결 대기 (최대 60초)
+for i in $(seq 1 12); do
+  if curl -s --max-time 3 https://www.google.com > /dev/null 2>&1; then
+    break
+  fi
+  echo "$(date '+%Y-%m-%d %H:%M:%S') 네트워크 대기 중... ($i/12)" >> "$LOG"
+  sleep 5
+done
+
 TODAY=$(date '+%Y-%m-%d')
 LAST_RUN=$(cat "$LAST_RUN_FILE" 2>/dev/null || echo "")
 
