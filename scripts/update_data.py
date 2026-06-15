@@ -61,7 +61,8 @@ def map_partner(campaign_name, adgroup_name=''):
     """campaign_name → 제휴사명 변환 (whitelist 기반)"""
     return CAMPAIGN_MAP.get(campaign_name, '기타')
 
-SHEET_ID = "1LImApdHZcM7WcfU9yy45eftZl9Gz0ombMUxbbS4m7e4"
+SHEET_ID         = "1LImApdHZcM7WcfU9yy45eftZl9Gz0ombMUxbbS4m7e4"
+SHEET_ID_TRAFFIC = "1Dn7Oeit1cGInlKHogVY8JrsTrJ6qMcWMm3ICeFyM5RU"
 START    = "2026-05-01"
 HTML_PATH = os.path.join(os.path.dirname(__file__), "..", "index.html")
 
@@ -338,6 +339,55 @@ def fetch_insights(svc):
     return parse_insight(get_range(svc, "프로모션주문_고객인사이트", "A2:E"), 0, 3, 2, 4)
 
 
+def parse_korean_date(s):
+    """'M월 D일' 형식 → YYYY-MM-DD 변환"""
+    m = re.match(r"(\d+)월\s*(\d+)일", str(s))
+    if not m:
+        return None
+    month, day = int(m.group(1)), int(m.group(2))
+    year = date.today().year
+    # 현재 월보다 큰 월은 전년도
+    if month > date.today().month:
+        year -= 1
+    try:
+        return date(year, month, day).strftime("%Y-%m-%d")
+    except ValueError:
+        return None
+
+
+def fetch_tot_adj_sheets(svc, dates):
+    """앱 트래픽 트래커 시트 4행에서 전사 Adjust 유입 가져오기
+    - 2행: 날짜 헤더 (M월 D일 형식)
+    - 4행: 전체 유입 수
+    """
+    try:
+        res = svc.spreadsheets().values().get(
+            spreadsheetId=SHEET_ID_TRAFFIC,
+            range="앱 트래픽 트래커!A2:LI4",
+            valueRenderOption="UNFORMATTED_VALUE"
+        ).execute()
+        raw = res.get("values", [])
+    except Exception as e:
+        print(f"  [WARN] 전사 Adjust 시트 로드 실패: {e}")
+        return [0] * len(dates)
+
+    if len(raw) < 3:
+        print("  [WARN] 전사 Adjust 시트 행 부족")
+        return [0] * len(dates)
+
+    header_row = raw[0]   # 2행: 날짜
+    data_row   = raw[2]   # 4행: 유입수
+
+    date_map = {}
+    for i, h in enumerate(header_row):
+        d = parse_date(h)  # 시리얼 숫자 또는 문자열 모두 처리
+        if d and d >= START and i < len(data_row):
+            date_map[d] = parse_int(data_row[i])
+
+    print(f"  앱 트래픽 트래커: {len(date_map)}일치 로드")
+    return [date_map.get(d, 0) for d in dates]
+
+
 def fetch_tot_prm_trino(dates):
     """Trino로 전사 프로모션 주문수 가져오기"""
     SQL = f"""
@@ -507,6 +557,9 @@ def main():
     existing_adj = json.loads(_m.group(1)) if _m else {}
     insight_adj = fetch_insight_adj_trino(yesterday, existing_adj)
 
+    print("전사 Adjust 유입 시트 로드 중...")
+    tot_adj = fetch_tot_adj_sheets(svc, dates)
+
     print("전사 프로모션 주문수 Trino 쿼리 중...")
     tot_prm = fetch_tot_prm_trino(dates)
 
@@ -535,7 +588,12 @@ def main():
     with open(HTML_PATH, encoding="utf-8") as f:
         html = f.read()
 
-    # 전사 prm, clb 배열 업데이트 (Trino + Sheets)
+    # 전사 adj, prm, clb 배열 업데이트
+    html = replace_tot_field(html, "adj", tot_adj)
+    html = replace_const(html, "ADJ_TOT", tot_adj)
+    html = replace_const(html, "CUM_ADJ_TOT", make_cum(tot_adj, dates))
+    html = re.sub(r'MAY_ADJ_TOT=\d+', f'MAY_ADJ_TOT={may_cum(make_cum(tot_adj, dates), dates)}', html)
+
     html = replace_tot_field(html, "prm", tot_prm)
     html = replace_tot_field(html, "clb", tot_clb)
     html = replace_tot_field(html, "clbN", tot_clbN)
