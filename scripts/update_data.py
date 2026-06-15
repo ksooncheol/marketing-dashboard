@@ -157,16 +157,41 @@ def may_cum(cum_arr, dates):
 # ── 데이터 fetch ──────────────────────────────────────
 
 def fetch_adjust(svc, dates):
-    """adjust 시트: A=날짜, C=유입수, D=제휴사명"""
-    rows = get_range(svc, "adjust", "A2:D")
+    """Trino로 전체 기간 유입 실적 조회 (Google Sheets 대체)"""
+    SQL = f"""
+SELECT
+    cast(CAST(date_add('hour', 9, engagement_time) AS date) as varchar) AS part_date,
+    cast(a.campaign_name as varchar) as campaign_name,
+    cast(a.adgroup_name as varchar) as adgroup_name,
+    cast(count(distinct user_id) as varchar) AS mem_cnt
+FROM hive.dhcentraladjust.cmdf_adjust_raw_data_main_installs a
+WHERE date(date_add('hour', 9, engagement_time))
+        BETWEEN date('{START}') AND DATE(NOW() + INTERVAL '9' HOUR) - INTERVAL '1' DAY
+  AND date(part_date)
+        BETWEEN date('{START}') - INTERVAL '1' DAY
+            AND DATE(NOW() + INTERVAL '9' HOUR) - INTERVAL '1' DAY
+  AND (
+    a.campaign_name LIKE 'aff%' OR a.campaign_name LIKE 'pts%'
+    OR a.campaign_name LIKE '%samsung%' OR a.campaign_name LIKE '%kakaopay%'
+    OR a.campaign_name LIKE '%tosspay%' OR a.campaign_name LIKE '%toss%'
+  )
+GROUP BY 1, 2, 3
+ORDER BY 1, 2
+"""
     by_p = defaultdict(lambda: defaultdict(int))
-    for row in rows:
-        if len(row) < 3: continue
-        d = parse_date(row[0])
-        if not d or d < START: continue
-        partner = (str(row[3]).strip() if len(row) > 3 else "") or "기타"
-        if "#N/A" in partner: partner = "기타"
-        by_p[partner][d] += parse_int(row[2])
+    try:
+        conn = get_trino_conn()
+        cur  = conn.cursor()
+        cur.execute(SQL)
+        rows = cur.fetchall()
+        print(f"  Trino 유입 실적: {len(rows)}행 수신")
+        for part_date, campaign_name, adgroup_name, mem_cnt in rows:
+            if not part_date or part_date < START: continue
+            partner = map_partner(campaign_name, adgroup_name or '')
+            if partner == '기타': continue
+            by_p[partner][part_date] += int(mem_cnt)
+    except Exception as e:
+        print(f"  [WARN] Trino 유입 실적 실패: {e} → 0으로 채움")
 
     SIMPLE_PAY = {"카카오페이", "토스페이", "네이버페이"}
     total    = [sum(by_p[p].get(d, 0) for p in by_p) for d in dates]
@@ -420,7 +445,7 @@ def main():
 
     svc = get_service()
 
-    print("adjust 시트 로드 중...")
+    print("Trino 유입 실적 쿼리 중...")
     adj_tot, adj_pay, p_adj = fetch_adjust(svc, dates)
 
     print("주문_쿠폰발급사용 시트 로드 중...")
