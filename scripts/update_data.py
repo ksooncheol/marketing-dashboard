@@ -143,21 +143,27 @@ def may_cum(cum_arr, dates):
 # ── 데이터 fetch ──────────────────────────────────────
 
 def fetch_adjust(svc, dates):
-    """Trino로 전체 기간 유입 실적 조회 (Google Sheets 대체)"""
+    """Trino로 전체 기간 유입 실적 조회
+    - 총계: 전체 캠페인 중복 제거 후 COUNT(DISTINCT user_id)
+    - 파트너별: 각 파트너 캠페인 내 COUNT(DISTINCT user_id)
+    """
+    IN_CLAUSE = ','.join(f"'{c}'" for c in VALID_CAMPAIGNS)
+    WHERE = f"""
+      date(date_add('hour', 9, engagement_time))
+          BETWEEN date('{START}') AND DATE(NOW() + INTERVAL '9' HOUR) - INTERVAL '1' DAY
+      AND date(part_date)
+          BETWEEN date('{START}') - INTERVAL '1' DAY
+              AND DATE(NOW() + INTERVAL '9' HOUR) - INTERVAL '1' DAY
+      AND a.campaign_name IN ({IN_CLAUSE})
+    """
     SQL = f"""
 SELECT
     cast(CAST(date_add('hour', 9, engagement_time) AS date) as varchar) AS part_date,
     cast(a.campaign_name as varchar) as campaign_name,
-    cast(a.adgroup_name as varchar) as adgroup_name,
-    cast(count(distinct user_id) as varchar) AS mem_cnt
+    count(distinct user_id) AS mem_cnt
 FROM hive.dhcentraladjust.cmdf_adjust_raw_data_main_installs a
-WHERE date(date_add('hour', 9, engagement_time))
-        BETWEEN date('{START}') AND DATE(NOW() + INTERVAL '9' HOUR) - INTERVAL '1' DAY
-  AND date(part_date)
-        BETWEEN date('{START}') - INTERVAL '1' DAY
-            AND DATE(NOW() + INTERVAL '9' HOUR) - INTERVAL '1' DAY
-  AND a.campaign_name IN ({','.join(f"'{c}'" for c in VALID_CAMPAIGNS)})
-GROUP BY 1, 2, 3
+WHERE {WHERE}
+GROUP BY 1, 2
 ORDER BY 1, 2
 """
     by_p = defaultdict(lambda: defaultdict(int))
@@ -167,9 +173,9 @@ ORDER BY 1, 2
         cur.execute(SQL)
         rows = cur.fetchall()
         print(f"  Trino 유입 실적: {len(rows)}행 수신")
-        for part_date, campaign_name, adgroup_name, mem_cnt in rows:
+        for part_date, campaign_name, mem_cnt in rows:
             if not part_date or part_date < START: continue
-            partner = map_partner(campaign_name, adgroup_name or '')
+            partner = map_partner(campaign_name)
             if partner == '기타': continue
             by_p[partner][part_date] += int(mem_cnt)
     except Exception as e:
@@ -245,7 +251,7 @@ def fetch_insight_adj_trino(yesterday: str, existing: dict) -> dict:
 WITH base AS (
   SELECT
     CAST(date_add('hour', 9, engagement_time) AS DATE) AS part_date,
-    a.campaign_name, a.adgroup_name,
+    a.campaign_name,
     user_id AS mem_no
   FROM dhcentraladjust.cmdf_adjust_raw_data_main_installs a
   WHERE date(date_add('hour', 9, engagement_time)) = DATE '{yesterday}'
@@ -254,10 +260,10 @@ WITH base AS (
     AND a.campaign_name IN ({','.join(f"'{c}'" for c in VALID_CAMPAIGNS)})
 ),
 base_dedup AS (
-  SELECT DISTINCT part_date, campaign_name, adgroup_name, mem_no FROM base
+  SELECT DISTINCT part_date, campaign_name, mem_no FROM base
 ),
 order_history AS (
-  SELECT bd.part_date, bd.campaign_name, bd.adgroup_name, bd.mem_no,
+  SELECT bd.part_date, bd.campaign_name, bd.mem_no,
     COUNT(CASE WHEN o.part_date >= CAST(bd.part_date - INTERVAL '30' DAY AS VARCHAR)
                 AND o.part_date < CAST(bd.part_date AS VARCHAR) THEN 1 END) AS ord_cnt_1m,
     COUNT(CASE WHEN o.part_date >= CAST(bd.part_date - INTERVAL '90' DAY AS VARCHAR)
@@ -270,10 +276,10 @@ order_history AS (
     AND o.part_date >= '2025-06-01'
     AND o.part_date < CAST(bd.part_date AS VARCHAR)
     AND o.is_test = 0 AND o.is_closed = 1
-  GROUP BY bd.part_date, bd.campaign_name, bd.adgroup_name, bd.mem_no
+  GROUP BY bd.part_date, bd.campaign_name, bd.mem_no
 ),
 classified AS (
-  SELECT part_date, campaign_name, adgroup_name, mem_no,
+  SELECT part_date, campaign_name, mem_no,
     CASE
       WHEN ord_cnt_1m >= 10 THEN '활성+고빈도'
       WHEN ord_cnt_1m >= 4  THEN '활성+중빈도'
@@ -287,11 +293,10 @@ classified AS (
 SELECT
   CAST(part_date AS VARCHAR)     AS part_date,
   CAST(campaign_name AS VARCHAR) AS campaign_name,
-  CAST(adgroup_name AS VARCHAR)  AS adgroup_name,
   CAST(seg AS VARCHAR)           AS seg,
   COUNT(DISTINCT mem_no)         AS uv
 FROM classified
-GROUP BY part_date, campaign_name, adgroup_name, seg
+GROUP BY part_date, campaign_name, seg
 ORDER BY part_date, campaign_name, seg
 """
     result = dict(existing)  # 기존 데이터 복사
@@ -303,8 +308,8 @@ ORDER BY part_date, campaign_name, seg
         print(f"  Trino 유입 인사이트: {len(rows)}행 수신")
 
         day_data = defaultdict(lambda: defaultdict(int))
-        for part_date, campaign_name, adgroup_name, seg, uv in rows:
-            partner = map_partner(campaign_name, adgroup_name or '')
+        for part_date, campaign_name, seg, uv in rows:
+            partner = map_partner(campaign_name)
             if partner == '기타': continue
             day_data[partner][seg] += int(uv)
 
