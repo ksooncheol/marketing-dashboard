@@ -24,56 +24,42 @@ def get_trino_conn():
         schema='default',
     )
 
-# ── campaign_name → 제휴사명 매핑 ─────────────────────
-# (campaign_name, adgroup_name) 또는 (campaign_name, '') 매핑
+# ── campaign_name → 제휴사명 매핑 (통합INDEX Z·AB열 기준 whitelist) ─────
 CAMPAIGN_MAP = {
-    ('kakaopay', ''):                              '카카오페이',
-    ('aff-kakaopay', ''):                          '카카오페이',
-    ('aff-naverpay', ''):                          '네이버페이',
-    ('aff-nav erpay', ''):                         '네이버페이',
-    ('pts-affiliate_toss-api-ci-registration', ''): '토스페이',
-    ('pts-affiliate_toss-api-join-baemin', ''):    '토스페이',
-    ('pts-affiliate_toss-api-member-bmclub', ''):  '토스페이',
-    ('aff-tosspa', ''):                            '토스페이',
-    ('aff-tosspay', ''):                           '토스페이',
-    ('aff_tosspay', ''):                           '토스페이',
-    ('aff-toss_tossetc_mix_pts_toss-coupon', ''):  '토스페이',
-    ('samsung_card', ''):                          '삼성카드',
-    ('aff-sscard', ''):                            '삼성카드',
-    ('aff-shcard', ''):                            '신한카드',
-    ('aff-kbcard', ''):                            'KB국민카드',
-    ('aff-hncard', ''):                            '하나카드',
-    ('aff-kbank', ''):                             '케이뱅크',
-    ('aff-melon', ''):                             '멜론',
-    ('aff-lotte', ''):                             '롯데백화점',
-    ('aff-tossplace', ''):                         '토스플레이스',
-    ('aff-kt', ''):                                'KT',
-    ('aff-lguplus', ''):                           'LGU+',
-    ('aff-amore', ''):                             '아모레',
-    ('aff-tosssec', ''):                           '토스증권',
-    # adgroup_name으로 구분되는 케이스
-    ('aff-wrcard', '2605_wrcard_crm'):             '비씨카드',
-    ('aff-wrcard', '2606_wrcard_crm'):             '우리카드',
-    ('aff-wrcard', ''):                            '우리카드',
-    ('aff-bccard', '2605_bccard_crm'):             '우리카드',
-    ('aff-bccard', ''):                            '비씨카드',
+    'aff_tosspay':                              '토스페이',
+    'aff-amore':                                '아모레',
+    'aff-bccard':                               '우리카드',
+    'aff-hncard':                               '하나카드',
+    'aff-kakaopay':                             '카카오페이',
+    'aff-kbank':                                '케이뱅크',
+    'aff-kbcard':                               'KB국민카드',
+    'aff-kt':                                   'KT',
+    'aff-lguplus':                              'LGU+',
+    'aff-lotte':                                '롯데백화점',
+    'aff-melon':                                '멜론',
+    'aff-nav erpay':                            '네이버페이',
+    'aff-naverpay':                             '네이버페이',
+    'aff-shcard':                               '신한카드',
+    'aff-sscard':                               '삼성카드',
+    'aff-toss_tossetc_mix_pts_toss-coupon':     '토스페이',
+    'aff-tosspa':                               '토스페이',
+    'aff-tosspay':                              '토스페이',
+    'aff-tossplace':                            '토스플레이스',
+    'aff-tosssec':                              '토스증권',
+    'aff-wrcard':                               '비씨카드',
+    'kakaopay':                                 '카카오페이',
+    'pts-affiliate_toss-api-ci-registration':   '토스페이',
+    'pts-affiliate_toss-api-join-baemin':       '토스페이',
+    'pts-affiliate_toss-api-member-bmclub':     '토스페이',
+    'samsung_card':                             '삼성카드',
 }
 
+# SQL IN 절에 사용할 campaign_name 목록
+VALID_CAMPAIGNS = list(CAMPAIGN_MAP.keys())
+
 def map_partner(campaign_name, adgroup_name=''):
-    """campaign_name → 제휴사명 변환"""
-    # 정확 매칭 (campaign + adgroup)
-    key = (campaign_name, adgroup_name)
-    if key in CAMPAIGN_MAP:
-        return CAMPAIGN_MAP[key]
-    # campaign_name만으로 매칭
-    key2 = (campaign_name, '')
-    if key2 in CAMPAIGN_MAP:
-        return CAMPAIGN_MAP[key2]
-    # 접두어 매칭
-    for (camp, _), partner in CAMPAIGN_MAP.items():
-        if campaign_name.startswith(camp) and camp:
-            return partner
-    return '기타'
+    """campaign_name → 제휴사명 변환 (whitelist 기반)"""
+    return CAMPAIGN_MAP.get(campaign_name, '기타')
 
 SHEET_ID = "1LImApdHZcM7WcfU9yy45eftZl9Gz0ombMUxbbS4m7e4"
 START    = "2026-05-01"
@@ -170,11 +156,7 @@ WHERE date(date_add('hour', 9, engagement_time))
   AND date(part_date)
         BETWEEN date('{START}') - INTERVAL '1' DAY
             AND DATE(NOW() + INTERVAL '9' HOUR) - INTERVAL '1' DAY
-  AND (
-    a.campaign_name LIKE 'aff%' OR a.campaign_name LIKE 'pts%'
-    OR a.campaign_name LIKE '%samsung%' OR a.campaign_name LIKE '%kakaopay%'
-    OR a.campaign_name LIKE '%tosspay%' OR a.campaign_name LIKE '%toss%'
-  )
+  AND a.campaign_name IN ({','.join(f"'{c}'" for c in VALID_CAMPAIGNS)})
 GROUP BY 1, 2, 3
 ORDER BY 1, 2
 """
@@ -269,11 +251,7 @@ WITH base AS (
   WHERE date(date_add('hour', 9, engagement_time)) = DATE '{yesterday}'
     AND date(part_date) BETWEEN DATE '{yesterday}' - INTERVAL '1' DAY
                              AND DATE '{yesterday}'
-    AND (
-      a.campaign_name LIKE 'aff%' OR a.campaign_name LIKE 'pts%'
-      OR a.campaign_name LIKE '%samsung%' OR a.campaign_name LIKE '%kakaopay%'
-      OR a.campaign_name LIKE '%tosspay%' OR a.campaign_name LIKE '%toss%'
-    )
+    AND a.campaign_name IN ({','.join(f"'{c}'" for c in VALID_CAMPAIGNS)})
 ),
 base_dedup AS (
   SELECT DISTINCT part_date, campaign_name, adgroup_name, mem_no FROM base
