@@ -337,6 +337,66 @@ def fetch_insights(svc):
 
     return parse_insight(get_range(svc, "프로모션주문_고객인사이트", "A2:E"), 0, 3, 2, 4)
 
+
+def fetch_tot_prm_trino(dates):
+    """Trino로 전사 프로모션 주문수 가져오기"""
+    SQL = f"""
+SELECT
+    part_date,
+    COUNT(*) AS cnt
+FROM sborder_mart.order_master
+WHERE part_date >= '{START}'
+  AND part_date < CAST(CURRENT_DATE AS VARCHAR)
+  AND is_test = 0
+  AND is_closed = 1
+  AND service_type IN ('BAEMIN', 'BAERA')
+GROUP BY part_date
+ORDER BY part_date
+"""
+    by_date = {}
+    try:
+        conn = get_trino_conn()
+        cur  = conn.cursor()
+        cur.execute(SQL)
+        for part_date, cnt in cur.fetchall():
+            by_date[str(part_date)] = int(cnt)
+        print(f"  Trino 전사 프로모션: {len(by_date)}일치 수신")
+    except Exception as e:
+        print(f"  [WARN] Trino 전사 프로모션 실패: {e}")
+    return [by_date.get(d, 0) for d in dates]
+
+
+def fetch_tot_clb_sheets(svc, dates):
+    """실적(D) 82~84행에서 전사 배민클럽 가져오기"""
+    # 21행 = 날짜 헤더, H열부터 (22행은 요일)
+    dates_raw = get_range(svc, "실적(D)", "H21:BZ21")
+    dates_row = dates_raw[0] if dates_raw else []
+
+    # 날짜 → 컬럼 인덱스 매핑
+    date_map = {}
+    for i, v in enumerate(dates_row):
+        d = parse_date(v)
+        if d:
+            date_map[d] = i
+
+    def row_arr(row_num):
+        raw = get_range(svc, "실적(D)", f"H{row_num}:BZ{row_num}")
+        data_row = raw[0] if raw else []
+        return [parse_int(data_row[date_map[d]]) if d in date_map and date_map[d] < len(data_row) else 0
+                for d in dates]
+
+    try:
+        clb  = row_arr(82)  # 전사 전체
+        clbN = row_arr(83)  # 신규
+        clbR = row_arr(84)  # 재구독
+        print(f"  실적(D) 전사 배민클럽: 로드 완료")
+    except Exception as e:
+        print(f"  [WARN] 전사 배민클럽 로드 실패: {e}")
+        zeros = [0] * len(dates)
+        clb, clbN, clbR = zeros, zeros, zeros
+    return clb, clbN, clbR
+
+
 # ── HTML 치환 ─────────────────────────────────────────
 
 def replace_const(html, name, value):
@@ -441,19 +501,28 @@ def main():
     insight_prm = fetch_insights(svc)
 
     print("유입 고객 인사이트 Trino 쿼리 중...")
-    # 기존 INSIGHT_ADJ 읽어서 어제 데이터만 Trino로 교체/추가
     with open(HTML_PATH, encoding="utf-8") as _f:
         _html_tmp = _f.read()
     _m = re.search(r'const INSIGHT_ADJ=({.*?});', _html_tmp, re.DOTALL)
     existing_adj = json.loads(_m.group(1)) if _m else {}
     insight_adj = fetch_insight_adj_trino(yesterday, existing_adj)
 
-    # 누적 배열
+    print("전사 프로모션 주문수 Trino 쿼리 중...")
+    tot_prm = fetch_tot_prm_trino(dates)
+
+    print("전사 배민클럽 시트 로드 중...")
+    tot_clb, tot_clbN, tot_clbR = fetch_tot_clb_sheets(svc, dates)
+
+    # 누적 배열 (제휴)
     cum_adj_tot = make_cum(adj_tot, dates)
     cum_adj_pay = make_cum(adj_pay, dates)
     cum_prm_tot = make_cum(prm_tot, dates)
     cum_prm_pay = make_cum(prm_pay, dates)
     cum_clb     = make_cum(clb_tot, dates)
+
+    # 누적 배열 (전사)
+    cum_tot_prm = make_cum(tot_prm, dates)
+    cum_tot_clb = make_cum(tot_clb, dates)
 
     # 5월 누적 (전월 비교 기준)
     may_adj_tot = may_cum(cum_adj_tot, dates)
@@ -466,7 +535,19 @@ def main():
     with open(HTML_PATH, encoding="utf-8") as f:
         html = f.read()
 
-    # 전사 배열 길이를 DATES 길이에 맞게 패딩 (전사 데이터 없는 날짜는 0)
+    # 전사 prm, clb 배열 업데이트 (Trino + Sheets)
+    html = replace_tot_field(html, "prm", tot_prm)
+    html = replace_tot_field(html, "clb", tot_clb)
+    html = replace_tot_field(html, "clbN", tot_clbN)
+    html = replace_tot_field(html, "clbR", tot_clbR)
+    html = replace_const(html, "PRM_TOT", tot_prm)
+    html = replace_const(html, "CLB_TOT", tot_clb)
+    html = replace_const(html, "CUM_PRM_TOT", cum_tot_prm)
+    html = replace_const(html, "CUM_CLB_TOT", cum_tot_clb)
+    html = re.sub(r'MAY_PRM_TOT=\d+', f'MAY_PRM_TOT={may_cum(cum_tot_prm, dates)}', html)
+    html = re.sub(r'MAY_CLB_TOT=\d+', f'MAY_CLB_TOT={may_cum(cum_tot_clb, dates)}', html)
+
+    # 나머지 전사 배열 길이를 DATES 길이에 맞게 패딩 (adj 등)
     html = pad_tot_arrays(html, n)
 
     # DATES, DAYS
