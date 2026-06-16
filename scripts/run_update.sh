@@ -19,6 +19,7 @@ for i in $(seq 1 12); do
 done
 
 TODAY=$(date '+%Y-%m-%d')
+YESTERDAY=$(date -v-1d '+%Y-%m-%d')
 LAST_RUN=$(cat "$LAST_RUN_FILE" 2>/dev/null || echo "")
 
 # Slack DM 발송 함수
@@ -59,7 +60,7 @@ done
 
 if [ "$UPDATE_OK" = false ]; then
   echo "$(date '+%Y-%m-%d %H:%M:%S') [실패] $MAX_RETRY회 시도 모두 실패" >> "$LOG"
-  slack_dm "❌ 대시보드 업데이트 실패 ($TODAY) — 로그 확인 필요"
+  slack_dm "❌ 대시보드 업데이트 실패 ($YESTERDAY 기준) — 로그 확인 필요"
   exit 1
 fi
 
@@ -67,15 +68,15 @@ fi
 git add index.html
 if git diff --staged --quiet; then
   echo "변경사항 없음" >> "$LOG"
-  slack_dm "✅ 대시보드 업데이트 완료 — $TODAY 기준 (변경사항 없음)"
+  slack_dm "✅ 대시보드 업데이트 완료 — $YESTERDAY 기준 (변경사항 없음)"
 else
   git commit -m "대시보드 자동 업데이트 $TODAY"
   if git push >> "$LOG" 2>&1; then
     echo "푸시 완료" >> "$LOG"
-    slack_dm "✅ 대시보드 업데이트 완료 — $TODAY 기준 데이터 반영됨"
+    slack_dm "✅ 대시보드 업데이트 완료 — $YESTERDAY 기준 데이터 반영됨"
   else
     echo "푸시 실패" >> "$LOG"
-    slack_dm "⚠️ 대시보드 업데이트됨 but 푸시 실패 ($TODAY) — 수동 push 필요"
+    slack_dm "⚠️ 대시보드 업데이트됨 but 푸시 실패 ($YESTERDAY 기준) — 수동 push 필요"
   fi
 fi
 
