@@ -863,15 +863,24 @@ function render(){
   const cumPrmAff=CUM_PRM_AFF[i], cumPrmTot=CUM_PRM_TOT[i];
   const cumClbAff=CUM_CLB_AFF[i], cumClbTot=CUM_CLB_TOT[i];
 
-  // 전월 누적값 (5월→없음, 6월→5월 확정)
-  const isMay = DATES[i].startsWith('2026-05');
-  const monLbl = isMay ? '5월' : '6월';
-  const prevMonAdjAff = isMay ? 0 : MAY_ADJ_AFF;
-  const prevMonAdjTot = isMay ? 0 : MAY_ADJ_TOT;
-  const prevMonPrmAff = isMay ? 0 : MAY_PRM_AFF;
-  const prevMonPrmTot = isMay ? 0 : MAY_PRM_TOT;
-  const prevMonClbAff = isMay ? 0 : MAY_CLB_AFF;
-  const prevMonClbTot = isMay ? 0 : MAY_CLB_TOT;
+  // 당월/전월 계산 (월 하드코딩 없이 동적으로 처리)
+  const curMonth = DATES[i].slice(0,7);
+  const monthStartIdx = DATES.findIndex(d=>d.startsWith(curMonth));
+  const isFirstMonth = monthStartIdx === 0;
+  const prevMonEndIdx = monthStartIdx - 1; // 전월 마지막 날 인덱스
+  const prevMonthStr = isFirstMonth ? null : DATES[prevMonEndIdx].slice(0,7);
+  const prevMonthStartIdx = isFirstMonth ? 0 : DATES.findIndex(d=>d.startsWith(prevMonthStr));
+  const monNames = {'2026-05':'5월','2026-06':'6월','2026-07':'7월','2026-08':'8월','2026-09':'9월','2026-10':'10월','2026-11':'11월','2026-12':'12월'};
+  const isMay = isFirstMonth;
+  const monLbl = monNames[curMonth] || curMonth;
+
+  // 전월 누적값 (CUM 배열의 전월 마지막 인덱스 값 = 전월 총계)
+  const prevMonAdjAff = isFirstMonth ? 0 : CUM_ADJ_AFF[prevMonEndIdx];
+  const prevMonAdjTot = isFirstMonth ? 0 : CUM_ADJ_TOT[prevMonEndIdx];
+  const prevMonPrmAff = isFirstMonth ? 0 : CUM_PRM_AFF[prevMonEndIdx];
+  const prevMonPrmTot = isFirstMonth ? 0 : CUM_PRM_TOT[prevMonEndIdx];
+  const prevMonClbAff = isFirstMonth ? 0 : CUM_CLB_AFF[prevMonEndIdx];
+  const prevMonClbTot = isFirstMonth ? 0 : CUM_CLB_TOT[prevMonEndIdx];
 
   // 전일 당월 누적
   const prevCumAdjAff = i>0?CUM_ADJ_AFF[prev]:0, prevCumAdjTot = i>0?CUM_ADJ_TOT[prev]:0;
@@ -879,15 +888,12 @@ function render(){
   const prevCumClbAff = i>0?CUM_CLB_AFF[prev]:0, prevCumClbTot = i>0?CUM_CLB_TOT[prev]:0;
 
   // ── 파트너별 당월 누계 계산 ──
-  const curMonth = DATES[i].slice(0,7);
-  const monthStartIdx = DATES.findIndex(d=>d.startsWith(curMonth));
-  const mayEndIdx = DATES.findIndex(d=>d.startsWith('2026-06')) - 1; // 5월 마지막 인덱스
   const pAdjMon = isAll ? CUM_ADJ_AFF_TOT[i] : adj.slice(monthStartIdx, i+1).reduce((a,b)=>a+b, 0);
   const pPrmMon = isAll ? CUM_PRM_AFF_TOT[i] : prm.slice(monthStartIdx, i+1).reduce((a,b)=>a+b, 0);
   const pClbMon = isAll ? CUM_CLB_AFF[i]     : clb.slice(monthStartIdx, i+1).reduce((a,b)=>a+b, 0);
-  const pAdjMonPrev = isMay ? 0 : (isAll ? MAY_ADJ_AFF_TOT : adj.slice(0, mayEndIdx+1).reduce((a,b)=>a+b, 0));
-  const pPrmMonPrev = isMay ? 0 : (isAll ? MAY_PRM_AFF_TOT : prm.slice(0, mayEndIdx+1).reduce((a,b)=>a+b, 0));
-  const pClbMonPrev = isMay ? 0 : (isAll ? MAY_CLB_AFF     : clb.slice(0, mayEndIdx+1).reduce((a,b)=>a+b, 0));
+  const pAdjMonPrev = isFirstMonth ? 0 : (isAll ? CUM_ADJ_AFF_TOT[prevMonEndIdx] : adj.slice(prevMonthStartIdx, monthStartIdx).reduce((a,b)=>a+b, 0));
+  const pPrmMonPrev = isFirstMonth ? 0 : (isAll ? CUM_PRM_AFF_TOT[prevMonEndIdx] : prm.slice(prevMonthStartIdx, monthStartIdx).reduce((a,b)=>a+b, 0));
+  const pClbMonPrev = isFirstMonth ? 0 : (isAll ? CUM_CLB_AFF[prevMonEndIdx]     : clb.slice(prevMonthStartIdx, monthStartIdx).reduce((a,b)=>a+b, 0));
 
   // 제휴사 선택 시 해당 제휴사 실적, 전체 시 제휴 전체 합산(row24/row176)
   const dayAdjAff = isAll ? ADJ_AFF_TOT[i] : adj[i];

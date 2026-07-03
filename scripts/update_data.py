@@ -143,6 +143,22 @@ def may_cum(cum_arr, dates):
 
 # ── 데이터 fetch ──────────────────────────────────────
 
+def run_trino_query(SQL, label, retries=3, delay=20):
+    """Trino 쿼리 실행, 실패 시 최대 retries회 재시도"""
+    for attempt in range(1, retries + 1):
+        try:
+            conn = get_trino_conn()
+            cur  = conn.cursor()
+            cur.execute(SQL)
+            return cur.fetchall()
+        except Exception as e:
+            if attempt < retries:
+                print(f"  [재시도 {attempt}/{retries}] {label} 오류: {e} — {delay}초 후 재시도")
+                time.sleep(delay)
+                delay *= 2  # 20s → 40s → 80s
+            else:
+                raise
+
 def fetch_adjust(svc, dates):
     """Trino로 전체 기간 유입 실적 조회
     - 총계: 전체 캠페인 중복 제거 후 COUNT(DISTINCT user_id)
@@ -169,10 +185,7 @@ ORDER BY 1, 2
 """
     by_p = defaultdict(lambda: defaultdict(int))
     try:
-        conn = get_trino_conn()
-        cur  = conn.cursor()
-        cur.execute(SQL)
-        rows = cur.fetchall()
+        rows = run_trino_query(SQL, "Trino 유입 실적")
         print(f"  Trino 유입 실적: {len(rows)}행 수신")
         for part_date, campaign_name, mem_cnt in rows:
             if not part_date or part_date < START: continue
@@ -302,10 +315,7 @@ ORDER BY part_date, campaign_name, seg
 """
     result = dict(existing)  # 기존 데이터 복사
     try:
-        conn = get_trino_conn()
-        cur  = conn.cursor()
-        cur.execute(SQL)
-        rows = cur.fetchall()
+        rows = run_trino_query(SQL, "Trino 유입 인사이트")
         print(f"  Trino 유입 인사이트: {len(rows)}행 수신")
 
         day_data = defaultdict(lambda: defaultdict(int))
@@ -405,10 +415,8 @@ ORDER BY part_date
 """
     by_date = {}
     try:
-        conn = get_trino_conn()
-        cur  = conn.cursor()
-        cur.execute(SQL)
-        for part_date, cnt in cur.fetchall():
+        rows = run_trino_query(SQL, "Trino 전사 프로모션")
+        for part_date, cnt in rows:
             by_date[str(part_date)] = int(cnt)
         print(f"  Trino 전사 프로모션: {len(by_date)}일치 수신")
     except Exception as e:
@@ -646,9 +654,19 @@ def main():
     html = re.sub(r'MAY_PRM_AFF=\d+', f'MAY_PRM_AFF={may_prm_pay}', html)
     html = re.sub(r'MAY_CLB_AFF=\d+', f'MAY_CLB_AFF={may_clb}', html)
 
-    # 월별 구간 인덱스
-    may_end   = next((i for i, d in enumerate(dates) if d == "2026-05-31"), len(dates)-1)
-    jun_start = may_end + 1
+    # 월별 구간 인덱스 (동적으로 계산)
+    def month_range(dates, ym):
+        start = next((i for i, d in enumerate(dates) if d.startswith(ym)), None)
+        end   = next((i for i in range(len(dates)-1, -1, -1) if dates[i].startswith(ym)), None)
+        return start, end
+
+    may_s, may_e = month_range(dates, "2026-05")
+    jun_s, jun_e = month_range(dates, "2026-06")
+    jul_s, jul_e = month_range(dates, "2026-07")
+
+    def mon_sum(arr, s, e):
+        if s is None or e is None: return 0
+        return sum(arr[s:e+1])
 
     # PARTNERS 개별 배열 + 월별 누계
     zeros = [0] * n
@@ -663,9 +681,9 @@ def main():
 
         # 파트너별 월 누계 (mAdj, mPrm, mClb)
         html = replace_partner_monthly(html, partner,
-            m_adj={"may": sum(adj_arr[:may_end+1]), "jun": sum(adj_arr[jun_start:])},
-            m_prm={"may": sum(prm_arr[:may_end+1]), "jun": sum(prm_arr[jun_start:])},
-            m_clb={"may": sum(clb_arr[:may_end+1]), "jun": sum(clb_arr[jun_start:])},
+            m_adj={"may": mon_sum(adj_arr, may_s, may_e), "jun": mon_sum(adj_arr, jun_s, jun_e), "jul": mon_sum(adj_arr, jul_s, jul_e)},
+            m_prm={"may": mon_sum(prm_arr, may_s, may_e), "jun": mon_sum(prm_arr, jun_s, jun_e), "jul": mon_sum(prm_arr, jul_s, jul_e)},
+            m_clb={"may": mon_sum(clb_arr, may_s, may_e), "jun": mon_sum(clb_arr, jun_s, jun_e), "jul": mon_sum(clb_arr, jul_s, jul_e)},
         )
 
     # 고객 인사이트
